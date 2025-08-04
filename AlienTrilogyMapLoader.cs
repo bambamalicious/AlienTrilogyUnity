@@ -16,7 +16,6 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 	public float texSize = 256f;
 	public float scalingFactor = 0.01f; // scaling corrections
 	public Material baseMaterial;
-	public List<Texture2D> textureTest = new();
 
 	// These store the mesh data for Unity
 	private List<Vector3> meshVertices = new();
@@ -28,6 +27,9 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 
 	// UV rectangles for each texture group
 	private List<List<(int X, int Y, int Width, int Height)>> uvRects = new();
+	
+	// Texture image data list
+	public List<Texture2D> imgData = new();
 
 	/*
 		Called once as soon as this script is loaded
@@ -86,16 +88,15 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 
 		return brList;
 	}
-
 	/*
 		Build the map textures
 	*/
-	private void BuildMapTextures(byte[] data)
+	private void BuildMapTextures(byte[] textureData)
 	{
-		// Read BX section
-		List<BinaryReader> brList = LoadSection(data, "BX");
+		// Read BX sections
+		List<BinaryReader> brList = LoadSection(textureData, "BX");
 		uvRects.Clear();
-
+		
 		// Read UV from texture groups BX00-BX04
 		foreach (BinaryReader bxbr in brList)
 		{
@@ -112,8 +113,141 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 			}
 			uvRects.Add(rects);
 		}
+		
+		// Read TP sections
+		List<BinaryReader> brImgList = LoadSection(textureData, "TP");
+		List<BinaryReader> brPalList = LoadSection(textureData, "CL");
+		Debug.Log("brPalList.Count = " + brPalList.Count);
+		
+		int t = 0;
+		imgData.Clear();
+		
+		// Read texture image data from TP00-TP04
+		foreach (BinaryReader tpbr in brImgList)
+		{
+			byte[] imageBytes = tpbr.ReadBytes((int)tpbr.BaseStream.Length);
+			
+			byte[] paletteData = brPalList[t].ReadBytes((int)brPalList[t].BaseStream.Length); // Embedded palette
+			List<byte> palD = new();
+			for(int p = 0; p < paletteData.Length; p++)
+			{
+				if(p >= 4)
+				{
+					palD.Add(paletteData[p]);
+				}
+			}
+			paletteData = Convert16BitPaletteToRGB(palD.ToArray());
+			
+			Texture2D texture = RenderRaw8bppImageUnity(imageBytes, paletteData, 256, 256, null, true);
+			texture.name = "Tex_" + t.ToString("D2");
+			imgData.Add(texture);
+			Debug.Log($"Loaded texture: {texture.width}x{texture.height}");
+			t++;
+		}
 	}
+	
+	/*
+		Create 16-bit RGB palette
+	*/
+	public static byte[] Convert16BitPaletteToRGB(byte[] rawPalette)
+	{
+		if (rawPalette == null || rawPalette.Length < 2) 
+			throw new ArgumentException("Palette data is missing or too short.");
 
+		int colorCount = rawPalette.Length / 2;
+		byte[] rgbPalette = new byte[256 * 3]; // max 256 colors RGB
+
+		for (int i = 0; i < colorCount && i < 256; i++)
+		{
+			// Read 16-bit color (little endian)
+			ushort color = (ushort)((rawPalette[i * 2 + 1] << 8) | rawPalette[i * 2]);
+
+			int r5 = color & 0x1F;
+			int g5 = (color >> 5) & 0x1F;
+			int b5 = (color >> 10) & 0x1F;
+
+			// Convert 5-bit color to 8-bit using bit replication
+			byte r8 = (byte)((r5 << 3) | (r5 >> 2));
+			byte g8 = (byte)((g5 << 3) | (g5 >> 2));
+			byte b8 = (byte)((b5 << 3) | (b5 >> 2));
+
+			rgbPalette[i * 3 + 0] = r8;
+			rgbPalette[i * 3 + 1] = g8;
+			rgbPalette[i * 3 + 2] = b8;
+		}
+
+		return rgbPalette;
+	}
+	
+	/*
+		Create 8-bit texture from 16-bit palette
+	*/
+	public static Texture2D RenderRaw8bppImageUnity(
+		byte[] pixelData, 
+		byte[] rgbPalette, 
+		int width, 
+		int height, 
+		int[] transparentValues = null, 
+		bool bitsPerPixel = false)
+	{
+		int numColors = rgbPalette.Length / 3; // Number of colors in palette
+		Color32[] pixels = new Color32[width * height];
+		Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+
+		for (int y = 0; y < height; y++)
+		{
+			for (int x = 0; x < width; x++)
+			{
+				int srcIndex = y * width + x;
+				if (srcIndex >= pixelData.Length)
+					continue;
+
+				byte colorIndex = pixelData[srcIndex];
+				Color32 color;
+
+				// Ensure colorIndex is valid and palette has color for it
+				if (colorIndex < numColors)
+				{
+					// Defensive: if palette data is incomplete, fallback magenta
+					int palettePos = colorIndex * 3;
+					if (palettePos + 2 < rgbPalette.Length)
+					{
+						byte r = rgbPalette[palettePos];
+						byte g = rgbPalette[palettePos + 1];
+						byte b = rgbPalette[palettePos + 2];
+						color = new Color32(r, g, b, 255);
+					}
+					else
+					{
+						color = new Color32(255, 0, 255, 255); // Magenta fallback
+					}
+				}
+				else
+				{
+					color = new Color32(255, 0, 255, 255); // Magenta fallback for out-of-range index
+				}
+
+				// Handle transparency
+				if (transparentValues != null && transparentValues.Contains(colorIndex))
+				{
+					color = bitsPerPixel
+						? new Color32(0, 0, 0, 0)        // Fully transparent
+						: new Color32(255, 0, 255, 255); // Magenta fallback
+				}
+
+				// Vertical flip: write pixels from bottom to top
+				int flippedY = height - 1 - y;
+				int dstIndex = flippedY * width + x;
+				pixels[dstIndex] = color;
+			}
+		}
+
+		texture.SetPixels32(pixels);
+		texture.Apply();
+
+		return texture;
+	}
+	
 	/*
 		Build the map geometry and prepare mesh data (vertices, uvs, triangles)
 	*/
@@ -312,8 +446,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 			Material mat = new Material(baseMaterial);
 			mat.name = "Mat_" + sub.Key;
 			mat.color = Color.white;
-			mat.mainTexture = textureTest[sub.Key];
-			SetMaterialRenderingMode(mat, RenderingMode.Cutout);
+			mat.mainTexture = imgData[sub.Key];
 			materials[sub.Key] = mat;
 		}
 
@@ -336,64 +469,6 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 		child.transform.localScale = new Vector3(1f, 1f, -1f) * scalingFactor;
 
 		Debug.Log("mesh.subMeshCount = " + mesh.subMeshCount);
-	}
-	
-	public enum RenderingMode
-	{
-		Opaque,
-		Cutout,
-		Fade,
-		Transparent
-	}
-
-	public void SetMaterialRenderingMode(Material material, RenderingMode mode)
-	{
-		switch (mode)
-		{
-			case RenderingMode.Opaque:
-				material.SetFloat("_Mode", 0);
-				material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-				material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
-				material.SetInt("_ZWrite", 1);
-				material.DisableKeyword("_ALPHATEST_ON");
-				material.DisableKeyword("_ALPHABLEND_ON");
-				material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-				material.renderQueue = -1;
-				break;
-
-			case RenderingMode.Cutout:
-				material.SetFloat("_Mode", 1);
-				material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-				material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.Zero);
-				material.SetInt("_ZWrite", 1);
-				material.EnableKeyword("_ALPHATEST_ON");
-				material.DisableKeyword("_ALPHABLEND_ON");
-				material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-				material.renderQueue = 2450;
-				break;
-
-			case RenderingMode.Fade:
-				material.SetFloat("_Mode", 2);
-				material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-				material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-				material.SetInt("_ZWrite", 0);
-				material.DisableKeyword("_ALPHATEST_ON");
-				material.EnableKeyword("_ALPHABLEND_ON");
-				material.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-				material.renderQueue = 3000;
-				break;
-
-			case RenderingMode.Transparent:
-				material.SetFloat("_Mode", 3);
-				material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.One);
-				material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-				material.SetInt("_ZWrite", 0);
-				material.DisableKeyword("_ALPHATEST_ON");
-				material.DisableKeyword("_ALPHABLEND_ON");
-				material.EnableKeyword("_ALPHAPREMULTIPLY_ON");
-				material.renderQueue = 3000;
-				break;
-		}
 	}
 
 }
