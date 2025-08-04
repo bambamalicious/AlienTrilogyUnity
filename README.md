@@ -10,3 +10,7 @@ Based on the wonderful work of https://github.com/Thor110/AlienTrilogyResurrecti
 * Create and connect a new material (unlit texture cutout)
 * Import all necessary map textures from original game (currently not loaded automatically, but will very soon)
 * Start the game inside Unity and see the map loaded into the scene
+
+## Screenshots
+![01](01.PNG)
+![02](02.PNG)
