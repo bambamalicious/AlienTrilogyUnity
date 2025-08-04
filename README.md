@@ -2,7 +2,7 @@
 Load data directly from original Alien Trilogy files into Unity
 
 ## Origin
-Base on the wonderful work of https://github.com/Thor110/AlienTrilogyResurrection
+Based on the wonderful work of https://github.com/Thor110/AlienTrilogyResurrection
 
 ## Usage
 * Create a new Unity project (Unity 6000+ LTS)
