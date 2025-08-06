@@ -12,8 +12,11 @@ using UnityEngine;
 */
 public class AlienTrilogyMapLoader : MonoBehaviour
 {
+	[Header("PATHS")]
 	public string levelPath = ""; // path to the .MAP file
 	public string texturePath = ""; // path to the .B16 file
+	
+	[Header("SETTINGS")]
 	public int textureSize = 256; // pixel dimensions
 	public float scalingFactor = 0.01f; // scaling corrections
 	public Material baseMaterial;
@@ -30,7 +33,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 	private List<List<(int X, int Y, int Width, int Height)>> uvRects = new();
 	
 	// Texture image data list
-	public List<Texture2D> imgData = new();
+	private List<Texture2D> imgData = new();
 
 	/*
 		Called once as soon as this script is loaded
@@ -390,7 +393,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 	}
 
 	/*
-		Create 8-bit texture from 16-bit palette, with transparency based on palette indices for given index
+		Create 8-bit texture from 16-bit palette, with transparency based on palette indices for given map id and image index
 	*/
 	private Texture2D RenderRaw8bppImageUnity(
 		byte[] pixelData, 
@@ -400,12 +403,19 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 		int mapId,
 		int imageIndex)
 	{
-		int[] transparentValues = GetTransparencyValues(mapId, imageIndex); // get transparency for this image
-
-		int numColors = rgbPalette.Length / 3; // Number of colors in palette
+		// Get transparency for this image
+		int[] transparentValues = GetTransparencyValues(mapId, imageIndex);
+		
+		// Number of colors in palette
+		int numColors = rgbPalette.Length / 3; 
+		
+		// Create color array
 		Color32[] pixels = new Color32[width * height];
+		
+		// Create texture object
 		Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
-
+		
+		// Write pixels to texture
 		for (int y = 0; y < height; y++)
 		{
 			for (int x = 0; x < width; x++)
@@ -459,13 +469,14 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 		
 		// Read MAP0 section
 		List<BinaryReader> map0brList = LoadSection(mapData, "MAP0");
-
+		
+		// Clear all lists to avoid artefacts
 		meshVertices.Clear();
 		meshUVs.Clear();
 		meshTriangles.Clear();
-
 		originalVertices.Clear();
-
+		
+		// Build mesh data
 		foreach (BinaryReader map0br in map0brList)
 		{
 			// Read number of vertices
