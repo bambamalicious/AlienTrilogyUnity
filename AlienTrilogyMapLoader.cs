@@ -1,8 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Linq;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
 
 /*
@@ -13,7 +14,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 {
 	public string levelPath = ""; // path to the .MAP file
 	public string texturePath = ""; // path to the .B16 file
-	public float texSize = 256f;
+	public int textureSize = 256; // pixel dimensions
 	public float scalingFactor = 0.01f; // scaling corrections
 	public Material baseMaterial;
 
@@ -45,14 +46,10 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 	private void Initiate()
 	{
 		// Build map textures
-		byte[] mapTextureData = File.ReadAllBytes(texturePath);
-		Debug.Log("Map texture bytes: " + mapTextureData.Length);
-		BuildMapTextures(mapTextureData);
+		BuildMapTextures();
 
 		// Build map geometry
-		byte[] mapFileData = File.ReadAllBytes(levelPath);
-		Debug.Log("Map geometry bytes: " + mapFileData.Length);
-		BuildMapGeometry(mapFileData);
+		BuildMapGeometry();
 
 		// Build map mesh
 		BuildMapMesh();
@@ -88,11 +85,17 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 
 		return brList;
 	}
+	
 	/*
 		Build the map textures
 	*/
-	private void BuildMapTextures(byte[] textureData)
+	private void BuildMapTextures()
 	{
+		byte[] textureData = File.ReadAllBytes(texturePath);
+		Debug.Log("Map texture bytes: " + textureData.Length);
+		
+		int imageId = ExtractIdFromGfxFilename(texturePath);
+		
 		// Read BX sections
 		List<BinaryReader> brList = LoadSection(textureData, "BX");
 		uvRects.Clear();
@@ -119,15 +122,15 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 		List<BinaryReader> brPalList = LoadSection(textureData, "CL");
 		Debug.Log("brPalList.Count = " + brPalList.Count);
 		
-		int t = 0;
+		int imageIndex = 0;
 		imgData.Clear();
 		
 		// Read texture image data from TP00-TP04
 		foreach (BinaryReader tpbr in brImgList)
 		{
 			byte[] imageBytes = tpbr.ReadBytes((int)tpbr.BaseStream.Length);
+			byte[] paletteData = brPalList[imageIndex].ReadBytes((int)brPalList[imageIndex].BaseStream.Length); // Embedded palette
 			
-			byte[] paletteData = brPalList[t].ReadBytes((int)brPalList[t].BaseStream.Length); // Embedded palette
 			List<byte> palD = new();
 			for(int p = 0; p < paletteData.Length; p++)
 			{
@@ -138,18 +141,36 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 			}
 			paletteData = Convert16BitPaletteToRGB(palD.ToArray());
 			
-			Texture2D texture = RenderRaw8bppImageUnity(imageBytes, paletteData, 256, 256, null, true);
-			texture.name = "Tex_" + t.ToString("D2");
+			Texture2D texture = RenderRaw8bppImageUnity(imageBytes, paletteData, textureSize, textureSize, imageId, imageIndex);
+			texture.name = "Tex_" + imageIndex.ToString("D2");
 			imgData.Add(texture);
 			Debug.Log($"Loaded texture: {texture.width}x{texture.height}");
-			t++;
+			imageIndex++;
 		}
+	}
+	
+	/*
+		Extract map id
+	*/
+	public int ExtractIdFromGfxFilename(string fullPath)
+	{
+		string fileName = Path.GetFileName(fullPath); // e.g. "111GFX.B16"
+		
+		// Match exactly 3 digits at the start of the filename
+		var match = Regex.Match(fileName, @"^\d{3}");
+		
+		if (match.Success && int.TryParse(match.Value, out int id))
+		{
+			return id;
+		}
+
+		return 0; // Fallback if no match or parse fails
 	}
 	
 	/*
 		Create 16-bit RGB palette
 	*/
-	public static byte[] Convert16BitPaletteToRGB(byte[] rawPalette)
+	public byte[] Convert16BitPaletteToRGB(byte[] rawPalette)
 	{
 		if (rawPalette == null || rawPalette.Length < 2) 
 			throw new ArgumentException("Palette data is missing or too short.");
@@ -178,18 +199,209 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 
 		return rgbPalette;
 	}
-	
+
 	/*
-		Create 8-bit texture from 16-bit palette
+		Returns transparent palette indices based on map id and image index
 	*/
-	public static Texture2D RenderRaw8bppImageUnity(
+	private int[] GetTransparencyValues(int id, int index)
+	{
+		int[] values = null;
+
+		switch (id)
+		{
+			case 111:
+			case 113:
+			case 114:
+			case 115:
+			case 121:
+				switch (index)
+				{
+					case 0:
+					case 2:
+					case 4:
+						values = new int[] { 255 };
+						break;
+					case 1:
+					case 3:
+						values = new int[] { 0 };
+						break;
+				}
+				break;
+
+			case 112:
+				switch (index)
+				{
+					case 0:
+						return values;
+					case 1:
+					case 3:
+						values = new int[] { 0 };
+						break;
+					case 2:
+					case 4:
+						values = new int[] { 255 };
+						break;
+				}
+				break;
+
+			case 122:
+			case 213:
+				switch (index)
+				{
+					case 0:
+						values = new int[] { 255 };
+						break;
+					case 1:
+					case 2:
+					case 3:
+					case 4:
+						return values;
+				}
+				break;
+
+			case 131:
+			case 211:
+			case 212:
+			case 231:
+			case 232:
+			case 242:
+			case 243:
+			case 262:
+			case 331:
+			case 361:
+			case 391:
+			case 901:
+			case 906:
+			case 907:
+				return values;
+
+			case 141:
+			case 155:
+			case 161:
+			case 162:
+			case 263:
+			case 311:
+			case 352:
+			case 353:
+			case 381:
+			case 902:
+			case 903:
+			case 908:
+			case 909:
+				switch (index)
+				{
+					case 0:
+					case 1:
+					case 2:
+					case 3:
+						return values;
+					case 4:
+						values = new int[] { 255 };
+						break;
+				}
+				break;
+
+			case 154:
+			case 321:
+			case 322:
+			case 323:
+			case 324:
+			case 325:
+				switch (index)
+				{
+					case 0:
+					case 4:
+						values = new int[] { 255 };
+						break;
+					case 1:
+					case 2:
+					case 3:
+						return values;
+				}
+				break;
+
+			case 222:
+				switch (index)
+				{
+					case 0:
+					case 1:
+					case 3:
+					case 4:
+						return values;
+					case 2:
+						values = new int[] { 255 };
+						break;
+				}
+				break;
+
+			case 351:
+			case 371:
+				switch (index)
+				{
+					case 0:
+					case 1:
+					case 3:
+						return values;
+					case 2:
+					case 4:
+						values = new int[] { 255 };
+						break;
+				}
+				break;
+
+			case 900:
+				switch (index)
+				{
+					case 0:
+						values = new int[] { 255 };
+						break;
+					case 1:
+					case 3:
+						values = new int[] { 0 };
+						break;
+					case 2:
+					case 4:
+						return values;
+				}
+				break;
+
+			case 904:
+			case 905:
+				switch (index)
+				{
+					case 0:
+						values = new int[] { 255 };
+						break;
+					case 1:
+					case 2:
+					case 3:
+						return values;
+					case 4:
+						values = new int[] { 255 };
+						break;
+				}
+				break;
+
+			default:
+				break;
+		}
+
+		return values;
+	}
+
+	/*
+		Create 8-bit texture from 16-bit palette, with transparency based on palette indices for given index
+	*/
+	private Texture2D RenderRaw8bppImageUnity(
 		byte[] pixelData, 
 		byte[] rgbPalette, 
 		int width, 
 		int height, 
-		int[] transparentValues = null, 
-		bool bitsPerPixel = false)
+		int mapId,
+		int imageIndex)
 	{
+		int[] transparentValues = GetTransparencyValues(mapId, imageIndex); // get transparency for this image
+
 		int numColors = rgbPalette.Length / 3; // Number of colors in palette
 		Color32[] pixels = new Color32[width * height];
 		Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
@@ -205,34 +417,23 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 				byte colorIndex = pixelData[srcIndex];
 				Color32 color;
 
-				// Ensure colorIndex is valid and palette has color for it
-				if (colorIndex < numColors)
+				// Defensive: if palette data is incomplete or index out of range, fallback magenta
+				if (colorIndex < numColors && (colorIndex * 3 + 2) < rgbPalette.Length)
 				{
-					// Defensive: if palette data is incomplete, fallback magenta
-					int palettePos = colorIndex * 3;
-					if (palettePos + 2 < rgbPalette.Length)
-					{
-						byte r = rgbPalette[palettePos];
-						byte g = rgbPalette[palettePos + 1];
-						byte b = rgbPalette[palettePos + 2];
-						color = new Color32(r, g, b, 255);
-					}
-					else
-					{
-						color = new Color32(255, 0, 255, 255); // Magenta fallback
-					}
+					byte r = rgbPalette[colorIndex * 3];
+					byte g = rgbPalette[colorIndex * 3 + 1];
+					byte b = rgbPalette[colorIndex * 3 + 2];
+					color = new Color32(r, g, b, 255);
 				}
 				else
 				{
-					color = new Color32(255, 0, 255, 255); // Magenta fallback for out-of-range index
+					color = new Color32(255, 0, 255, 255); // Magenta fallback
 				}
 
-				// Handle transparency
+				// Handle transparency: if pixel color index is in transparentValues, make fully transparent
 				if (transparentValues != null && transparentValues.Contains(colorIndex))
 				{
-					color = bitsPerPixel
-						? new Color32(0, 0, 0, 0)        // Fully transparent
-						: new Color32(255, 0, 255, 255); // Magenta fallback
+					color.a = 0;  // Fully transparent
 				}
 
 				// Vertical flip: write pixels from bottom to top
@@ -251,10 +452,13 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 	/*
 		Build the map geometry and prepare mesh data (vertices, uvs, triangles)
 	*/
-	private void BuildMapGeometry(byte[] data)
+	private void BuildMapGeometry()
 	{
+		byte[] mapData = File.ReadAllBytes(levelPath);
+		Debug.Log("Map geometry bytes: " + mapData.Length);
+		
 		// Read MAP0 section
-		List<BinaryReader> map0brList = LoadSection(data, "MAP0");
+		List<BinaryReader> map0brList = LoadSection(mapData, "MAP0");
 
 		meshVertices.Clear();
 		meshUVs.Clear();
@@ -350,6 +554,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
 					var rect = uvRects[texGroup][localIndex];
 
 					// Calculate UV coords (Unity uses bottom-left origin for UV)
+					float texSize = (float)textureSize;
 					float uMin = rect.X / texSize;
 					float vMin = 1f - (rect.Y + rect.Height) / texSize;
 					float uMax = (rect.X + rect.Width) / texSize;
