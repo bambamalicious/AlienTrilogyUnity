@@ -11,54 +11,6 @@ using System.Diagnostics.Contracts;
 	Alien Trilogy Data Loader
 	Load data directly from original Alien Trilogy files to use it in Unity
 */
-
-[System.Serializable] // Makes the class visible in the Inspector
-public class Monster
-{
-    public string Type;
-    public string X;
-    public string Y;
-    public string Z;
-    public string Health;
-    public string Drop;
-    public string Speed;
-}
-
-[System.Serializable] // Makes the class visible in the Inspector
-public class Crate
-{
-    public string name;
-    public GameObject spawnedObject;
-    public int X;
-    public int Y;
-    public int Type;
-    public int Drop;
-    public int unknown1;
-    public int unknown2;
-    public int Drop1;
-    public int Drop2;
-    public int unknown3;
-    public int unknown4;
-    public int unknown5;
-    public int unknown6;
-    public int unknown7;
-    public int unknown8;
-    public int unknown9;
-    public int unknown10;
-}
-
-[System.Serializable] // Makes the class visible in the Inspector
-public class Pickup
-{
-    public int x;
-    public int y;
-    public int type;
-    public int amount;
-    public int multiplier;
-    public int unknown1;
-    public int z;
-    public int unknown2;
-}
     public class AlienTrilogyMapLoader : MonoBehaviour
 {
     [Header("PATHS")]
@@ -69,25 +21,6 @@ public class Pickup
     public int textureSize = 256; // pixel dimensions
     public float scalingFactor = 1/512f; // scaling corrections
     public Material baseMaterial;
-
-    [Header("MAP DETAILS")]
-    //Map strings
-    public string mapLengthString;
-    public string mapWidthString;
-    public string playerStartXString;
-    public string playerStartYString;                               // unknown 1
-    public string monsterCountString;
-    public string pickupCountString;
-    public string boxCountString;
-    public string doorCountString;
-    public string playerStartAngleString;
-    public string unknownMapBytes1;
-    public string unknownMapBytes2;
-
-    [Header("Object Lists")]
-    public List<Monster> monsters = new();
-    public List<Crate> boxes = new();
-    public List<Pickup> pickups = new();
 
     // These store the mesh data for Unity
     private List<Vector3> meshVertices = new();
@@ -123,12 +56,8 @@ public class Pickup
     /*
 		Load the file from a given path and build the map in Unity
 	*/
-    public void Initiate(string levelToLoad)
+    public void Initiate(string levelToLoad, string texturesToLoad)
     {
-        levelPath = levelToLoad + "L111LEV.MAP";
-        byte[] mapFileData = File.ReadAllBytes(levelPath);
-        Debug.Log("Map geometry bytes: " + mapFileData.Length);
-        GetData(mapFileData);
 
         // Build map textures
         BuildMapTextures();
@@ -765,142 +694,9 @@ public class Pickup
 
         // Un-mirror
         child.transform.localScale = new Vector3(-1f, 1f, 1f) * scalingFactor;
-        child.transform.localPosition = new Vector3(-int.Parse(mapLengthString) / 2, 0, int.Parse(mapWidthString) / 2);
+        child.transform.localPosition = new Vector3(-int.Parse(ObjDataPuller.objectPuller.mapLengthString) / 2, 0, int.Parse(ObjDataPuller.objectPuller.mapWidthString) / 2);
         child.AddComponent<MeshCollider>();
 
         Debug.Log("mesh.subMeshCount = " + mesh.subMeshCount);
-    }
-    public void GetData(byte[] data)
-    {
-
-        // Read MAP0 section
-        List<BinaryReader> map0brList = LoadSection(data, "MAP0");
-
-        foreach (BinaryReader map0br in map0brList)
-        {
-            // Read number of vertices
-            ushort vertCount = map0br.ReadUInt16();
-            Debug.Log("Number of vertices: " + vertCount);
-
-            // Read number of quads
-            ushort quadCount = map0br.ReadUInt16();
-            Debug.Log("Number of quads: " + quadCount);
-            ushort mapLength = map0br.ReadUInt16();
-            mapLengthString = mapLength.ToString();
-            ushort mapWidth = map0br.ReadUInt16();
-            mapWidthString = mapWidth.ToString();            // display map width
-            ushort playerStartX = map0br.ReadUInt16();
-            playerStartXString = playerStartX.ToString();        // display player start X coordinate
-            ushort playerStartY = map0br.ReadUInt16();
-            playerStartYString = playerStartY.ToString();    // display player start Y coordinate
-            byte unknown = map0br.ReadByte();                   // unknown 1
-            map0br.ReadByte();                                 // unknown 2                                                          
-            ushort monsterCount = map0br.ReadUInt16();
-            monsterCountString = monsterCount.ToString();        // display monster count
-            ushort pickupCount = map0br.ReadUInt16();
-            pickupCountString = pickupCount.ToString();         // display pickup count
-            ushort boxCount = map0br.ReadUInt16();
-            boxCountString = boxCount.ToString();           // display box count
-            ushort doorCount = map0br.ReadUInt16();
-            doorCountString = doorCount.ToString();          // display door count
-            ushort unknownmap1 = map0br.ReadByte();                                // unknown 1
-            unknownMapBytes1 = unknownmap1.ToString();
-            ushort unknownmap2 = map0br.ReadByte();                                // unknown 1
-            unknownMapBytes2 = unknownmap1.ToString();                            // unknown 2
-            ushort playerStartAngle = map0br.ReadUInt16();
-            playerStartAngleString = playerStartAngle.ToString();   // display player start angle
-
-            map0br.ReadBytes(10);                               // unknown 3 & 4
-            // vertice formula - multiply the value of these two bytes by 8 - (6 bytes for 3 points + 2 bytes zeros)
-            map0br.BaseStream.Seek(vertCount * 8, SeekOrigin.Current);
-            // quad formula - the value of these 2 bytes multiply by 20 - (16 bytes dot indices and 4 bytes info)
-            map0br.BaseStream.Seek(quadCount * 20, SeekOrigin.Current);
-            //MessageBox.Show($"{ms.Position}"); // 323148 + 20 = 323168 ( L111LEV.MAP )
-            // size formula - for these bytes = multiply length by width and multiply the resulting value by 16 - (16 bytes describe one cell.)
-            // collision 16
-            //4//2//2//1//1//1//1//2//1//1
-            map0br.BaseStream.Seek((mapLength * mapWidth * 16), SeekOrigin.Current);
-
-            for (int i = 0; i < monsterCount; i++) // 28
-            {
-                byte type = map0br.ReadByte();
-                byte x = map0br.ReadByte();
-                byte y = map0br.ReadByte();
-                byte z = map0br.ReadByte();
-                short health = map0br.ReadInt16();
-                byte drop = map0br.ReadByte();
-                map0br.ReadBytes(7); // unknown bytes
-                short speed = map0br.ReadInt16();
-                map0br.ReadBytes(4); // unknown bytes
-                Monster monster = new Monster
-                {
-                    Type = type.ToString(),
-                    X = x.ToString(),
-                    Y = y.ToString(),
-                    Z = z.ToString(),
-                    Health = health.ToString(),
-                    Drop = drop.ToString(),
-                    Speed = speed.ToString()
-                };
-                monsters.Add(monster);
-            }
-            //MessageBox.Show($"Pickups : {ms.Position}"); // 478268 + 20 = 478288 ( L111LEV.MAP )
-            // pickup formula = number of elements multiplied by 8 - (8 bytes per pickup)
-            for (int i = 0; i < pickupCount; i++) // 28
-            {
-                Pickup pickup = new Pickup 
-                {
-                x = map0br.ReadByte(),
-                y = map0br.ReadByte(),
-                type = map0br.ReadByte(),
-                amount = map0br.ReadByte(),
-                multiplier = map0br.ReadByte(),
-                unknown1 = map0br.ReadByte(),// unk1
-                z = map0br.ReadByte(),
-                unknown2 = map0br.ReadByte(), // unk2
-                };
-                pickups.Add(pickup);
-            }
-            map0br.BaseStream.Seek(unknown * 8, SeekOrigin.Current);
-            //MessageBox.Show($"Boxes : {ms.Position}"); // 478492 + 20 = 478512 ( L111LEV.MAP )
-            // boxes formula = number of elements multiplied by 16 - (16 bytes per box)
-            for (int i = 0; i < boxCount; i++) // 44 -> 44 objects in L111LEV.MAP ( Barrels, Boxes, Switches )
-            {
-                Crate box = new Crate
-                {
-                    X = map0br.ReadByte(),
-                    Y = map0br.ReadByte(),
-                    Type = map0br.ReadByte(),
-                    unknown1 = map0br.ReadByte(),
-                    unknown2 = map0br.ReadByte(),
-                    Drop = map0br.ReadByte(),
-                    Drop1 = map0br.ReadByte(),
-                    Drop2 = map0br.ReadByte(),
-                    unknown3 = map0br.ReadByte(),
-                    unknown4 = map0br.ReadByte(),
-                    unknown5 = map0br.ReadByte(),
-                    unknown6 = map0br.ReadByte(),
-                    unknown7 = map0br.ReadByte(),
-                    unknown8 = map0br.ReadByte(),
-                    unknown9 = map0br.ReadByte(),
-                    unknown10 = map0br.ReadByte()
-                };
-                boxes.Add(box);
-            }
-            //MessageBox.Show($"Doors : {ms.Position}"); // 479196 + 20 = 479216 ( L111LEV.MAP )
-            // doors formula = value multiplied by 8 - (8 bytes one element)
-            for (int i = 0; i < doorCount; i++) // 6 -> 6 doors in L111LEV.MAP
-            {
-                byte x = map0br.ReadByte();
-                byte y = map0br.ReadByte();
-                map0br.ReadByte(); // unk1
-                byte time = map0br.ReadByte();
-                byte tag = map0br.ReadByte();
-                map0br.ReadByte(); // unk2
-                byte rotation = map0br.ReadByte();
-                byte index = map0br.ReadByte();
-                //doors.Add((x, y, time, tag, rotation, index));
-            }
-        }
     }
 }
