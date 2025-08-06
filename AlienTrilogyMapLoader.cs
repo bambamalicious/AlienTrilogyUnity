@@ -58,7 +58,8 @@ using System.Diagnostics.Contracts;
 	*/
     public void Initiate(string levelToLoad, string texturesToLoad)
     {
-
+        levelPath = levelToLoad;
+        texturePath = texturesToLoad;
         // Build map textures
         BuildMapTextures();
 
