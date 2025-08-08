@@ -13,26 +13,26 @@ using System.Diagnostics.Contracts;
 public class Monster
 {
     public string Name;
-    public int Type;   // 2 = Facehugger, 3 = chestburster 6 = Warrior 11 = WY Guard
+    public int Type;   //1= FH Egg 2 = Facehugger, 3 = chestburster 6 = Warrior 8= Praetorian, 10 = body 11 = WY Guard
     public int X;     // correct
     public int Y;     // also correct
     public int Z;     // 255 = floor item
+    public int unknown1;
     public int Health; // Unknown what this actually is
     public int Drop;  // - This is the object health
-    public int unknown1;
-    public int unknown2;
     public int unknown3;
+    public int difficulty; // Difficulty level 0 = easy, 1 = normal 2= hard
     public int unknown4;
     public int unknown5;
-    public int unknown6;
+    public int unknown6;  //Rotation the monster is facing
     public int unknown7;
-    public int Speed;
-    public int Speed2;
     public int unknown8;
+    public int Speed;    //100 is full speed
     public int unknown9;
     public int unknown10;
     public int unknown11;
     public int unknown12;
+    public int unknown13;  //Invulnerability from spawn / release
 }
 
 [System.Serializable] // Makes the class visible in the Inspector
@@ -43,18 +43,18 @@ public class Crate
     public int X;
     public int Y;
     public int Type;
-    public int Drop;
-    public int unknown1;
+    public int Drop;  //if crate, health
+    public int unknown1; //2 = enemy spawn, 0 = pickups
     public int unknown2;
     public int Drop1; // - Index of pickup (when correctly calculated.
-    public int Drop2;  // - index of second pickup
+    public int Drop2;  // - index of second pickup (255 is no pickup)
     public int unknown3;
     public int unknown4;
     public int unknown5;
     public int unknown6;
     public int unknown7;
     public int unknown8;
-    public int unknown9;
+    public int rotation;  //Rotation of object, seems to be 0-3
     public int unknown10;
 }
 
@@ -187,22 +187,22 @@ public class ObjDataPuller : MonoBehaviour
                     X = map0br.ReadByte(),
                     Y = map0br.ReadByte(),
                     Z = map0br.ReadByte(),
-                    Health = map0br.ReadByte(),
-                    Drop = map0br.ReadByte(),
                     unknown1 = map0br.ReadByte(),
-                    unknown2 = map0br.ReadByte(),
+                    Health = map0br.ReadByte(),
+                    Drop = map0br.ReadByte(),                    
                     unknown3 = map0br.ReadByte(),
+                    difficulty = map0br.ReadByte(),
                     unknown4 = map0br.ReadByte(),
                     unknown5 = map0br.ReadByte(),
                     unknown6 = map0br.ReadByte(),
                     unknown7 = map0br.ReadByte(),
-                    Speed = map0br.ReadByte(),
-                    Speed2 = map0br.ReadByte(),
                     unknown8 = map0br.ReadByte(),
+                    Speed = map0br.ReadByte(),
                     unknown9 = map0br.ReadByte(),
                     unknown10 = map0br.ReadByte(),
                     unknown11 = map0br.ReadByte(),
                     unknown12 = map0br.ReadByte(),
+                    unknown13 = map0br.ReadByte(),
                 };
                 monsters.Add(monster);
             }
@@ -246,10 +246,13 @@ public class ObjDataPuller : MonoBehaviour
                     unknown6 = map0br.ReadByte(),
                     unknown7 = map0br.ReadByte(),
                     unknown8 = map0br.ReadByte(),
-                    unknown9 = map0br.ReadByte(),
+                    rotation = map0br.ReadByte(),
                     unknown10 = map0br.ReadByte()
                 };
-                boxes.Add(box);
+                if (box.Type != 20 && box.Type != 23 && box.Type != 25)
+                {
+                    boxes.Add(box);
+                }
             }
             //MessageBox.Show($"Doors : {ms.Position}"); // 479196 + 20 = 479216 ( L111LEV.MAP )
             // doors formula = value multiplied by 8 - (8 bytes one element)
