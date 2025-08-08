@@ -1,4 +1,5 @@
 using System.IO;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class MapFinder : MonoBehaviour
@@ -13,8 +14,15 @@ public class MapFinder : MonoBehaviour
     public string levelPath7 = "";
     public string[] levels;
 
+    public static MapFinder finder;
+
     void Start()
     {
+        if(finder == null)
+        {
+            finder = this;
+        }
+        else { Destroy(gameObject);}
         CheckDirectory();
     }
 
@@ -47,12 +55,12 @@ public class MapFinder : MonoBehaviour
     [ContextMenu("Generate Level")]
     public void GeneratateLevel()
     {
-        AlienTrilogyMapLoader.loader.Initiate(levelPath1+"L131LEV.MAP", levelPath1 + "131GFX.B16");
+        AlienTrilogyMapLoader.loader.Initiate(levelPath1+"L111LEV.MAP", levelPath1 + "111GFX.B16");
     }
 
     [ContextMenu("Generate Obj Data")]
     public void GeneratateObjects()
     {
-        ObjDataPuller.objectPuller.Initiate(levelPath1 + "L131LEV.MAP", levelPath1 + "131GFX.B16");
+        ObjDataPuller.objectPuller.Initiate(levelPath1 + "L111LEV.MAP", levelPath1 + "111GFX.B16");
     }
 }
