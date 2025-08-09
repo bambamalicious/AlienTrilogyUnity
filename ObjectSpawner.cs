@@ -16,6 +16,27 @@ public class ObjectSpawner : MonoBehaviour
     {
     }
 
+    [ContextMenu("SpawnUnknowns")]
+    public void SpawnUnknowns()
+    {
+        int index = 1;
+        foreach (UnknownObj obj in ObjDataPuller.objectPuller.unknowns)
+        {
+            Vector3 pos = new Vector3(-obj.x, 0 - 10, obj.y);
+            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation); RaycastHit hit;
+            newObj.name = "Unknown " + index;
+            obj.obj = newObj;
+            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+            {
+                if (hit.collider != null)
+                {
+                    newObj.transform.position = hit.point;
+                }
+            }
+            index++;
+        }
+    }
+
     [ContextMenu("SpawnCrates")]
     public void SpawnCrates()
     {
