@@ -14,12 +14,12 @@ using System.Diagnostics.Contracts;
     public class AlienTrilogyMapLoader : MonoBehaviour
 {
     [Header("PATHS")]
-    public string levelPath = ""; // path to the .MAP file
-    public string texturePath = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\HDD\\TRILOGY\\CD\\L111LEV.B16"; // path to the .B16 file
+    string levelPath = ""; // path to the .MAP file
+    string texturePath = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\HDD\\TRILOGY\\CD\\L111LEV.B16"; // path to the .B16 file
 
     [Header("SETTINGS")]
-    public int textureSize = 256; // pixel dimensions
-    public float scalingFactor = 1/512f; // scaling corrections
+    int textureSize = 256; // pixel dimensions
+    float scalingFactor = 1/512f; // scaling corrections
     public Material baseMaterial;
 
     // These store the mesh data for Unity
