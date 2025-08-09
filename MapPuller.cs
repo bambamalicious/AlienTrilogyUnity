@@ -3,6 +3,9 @@ using System.IO;
 using Unity.VisualScripting;
 using UnityEngine;
 
+
+// Before using these scripts, ensure you have created a "Legacy Transparent Cutout" Material,
+// and a sphere gameobject and assigned these to the Map Loader and Object Spawner scripts.
 public class MapFinder : MonoBehaviour
 {
     public string levelNumber;
@@ -56,17 +59,15 @@ public class MapFinder : MonoBehaviour
         };
     }
 
-    [ContextMenu("Generate Level")]
-    public void GeneratateLevel()
-    {
-        CheckDirectory();
-        AlienTrilogyMapLoader.loader.Initiate(fileDirectory +  "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.BIN");
-    }
-
-    [ContextMenu("Generate Obj Data")]
+    [ContextMenu("Generate Obj Data & Create Level")]
     public void GeneratateObjects()
     {
-        CheckDirectory();
-        ObjDataPuller.objectPuller.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.BIN");
+        if (levelNumber != "")
+        {
+            CheckDirectory();
+            ObjDataPuller.objectPuller.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.B16");
+            AlienTrilogyMapLoader.loader.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.B16");
+        }
+        else { new Exception("Level number required in inspector"); }
     }
 }
