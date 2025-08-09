@@ -9,11 +9,11 @@ using System.Diagnostics.Contracts;
 
 
 [System.Serializable] // Makes the class visible in the Inspector
-public class UnknownObj
+public class PathNode
 {
     public string name;
     public GameObject obj;
-    public int x, y, unknown1, unknown2, unknown3, unknown4, unknown5, unknown6; 
+    public int x, y, unknown1, unknown2, nodeA, nodeB, nodeC, nodeD; 
 }
 
     [System.Serializable] // Makes the class visible in the Inspector
@@ -88,7 +88,7 @@ public class ObjDataPuller : MonoBehaviour
     public List<Crate> boxes = new();
     public List<Pickup> pickups = new();
 
-    public List<UnknownObj> unknowns = new();
+    public List<PathNode> pathNodes = new();
 
     [Header("paths")]
     public string levelPath = ""; // path to the .MAP file
@@ -180,18 +180,18 @@ public class ObjDataPuller : MonoBehaviour
 
             for (int i = 0; i < unknown; i++)
             {
-                UnknownObj obj = new UnknownObj
+                PathNode obj = new PathNode
                 {
                     x = map0br.ReadByte(),
                     y = map0br.ReadByte(),
                     unknown1 = map0br.ReadByte(),
                     unknown2 = map0br.ReadByte(),
-                    unknown3 = map0br.ReadByte(),
-                    unknown4 = map0br.ReadByte(),
-                    unknown5 = map0br.ReadByte(),
-                    unknown6 = map0br.ReadByte(),
+                    nodeA = map0br.ReadByte(),
+                    nodeB = map0br.ReadByte(),                    
+                    nodeC = map0br.ReadByte(),
+                    nodeD = map0br.ReadByte(),
                 };
-                unknowns.Add(obj);
+                pathNodes.Add(obj);
             }
             //map0br.BaseStream.Seek(unknown * 8, SeekOrigin.Current);
 
