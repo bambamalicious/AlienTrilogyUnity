@@ -20,7 +20,7 @@ public class ObjectSpawner : MonoBehaviour
     public void SpawnUnknowns()
     {
         int index = 1;
-        foreach (UnknownObj obj in ObjDataPuller.objectPuller.unknowns)
+        foreach (PathNode obj in ObjDataPuller.objectPuller.pathNodes)
         {
             Vector3 pos = new Vector3(-obj.x, 0 - 10, obj.y);
             GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation); RaycastHit hit;
@@ -43,7 +43,7 @@ public class ObjectSpawner : MonoBehaviour
         int index = 1;
         foreach (Crate crate in ObjDataPuller.objectPuller.boxes)
         {
-            Vector3 pos = new Vector3(-crate.X-.5f, 0 - 10, crate.Y+.5f);
+            Vector3 pos = new Vector3(-crate.X-.5f, 0 - 10, crate.Y);
             GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation); RaycastHit hit;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
             {
