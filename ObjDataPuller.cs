@@ -95,18 +95,11 @@ public class ObjDataPuller : MonoBehaviour
     public string texturePath = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\HDD\\TRILOGY\\CD\\L111LEV.B16"; // path to the .B16 file
 
     [Header("Map Strings")]
-    //Map strings
-    public string mapLengthString;
-    public string mapWidthString;
-    public string playerStartXString;
-    public string playerStartYString;                               // unknown 1
-    public string monsterCountString;
-    public string pickupCountString;
-    public string boxCountString;
-    public string doorCountString;
-    public string playerStartAngleString;
     public string unknownMapBytes1;
     public string unknownMapBytes2;
+    //Map strings
+    public string mapLengthString, mapWidthString, playerStartXString, playerStartYString, monsterCountString, pickupCountString, boxCountString, doorCountString, playerStartAngleString;
+
 
 
     public static ObjDataPuller objectPuller;
