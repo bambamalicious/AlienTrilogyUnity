@@ -7,9 +7,9 @@ public class ObjectSpawner : MonoBehaviour
     //3D models to instantiate
     [Header("3D Objects")]
     public GameObject dummyObj;
-    public Mesh smallCrate, largeCrate, barrel, smallSwitch;
-    public Material switchMaterial;
-    public Mesh pistolClip, shotgunShell, pistol, shotgun, dermPatch,autoMap, healthPack, battery;
+    //public Mesh smallCrate, largeCrate, barrel, smallSwitch;
+    //public Material switchMaterial;
+    //public Mesh pistolClip, shotgunShell, pistol, shotgun, dermPatch,autoMap, healthPack, battery;
     public Material objMaterial;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -43,7 +43,7 @@ public class ObjectSpawner : MonoBehaviour
         int index = 1;
         foreach (Crate crate in ObjDataPuller.objectPuller.boxes)
         {
-            Vector3 pos = new Vector3(-crate.X, 0 - 10, crate.Y);
+            Vector3 pos = new Vector3(-crate.X-.5f, 0 - 10, crate.Y+.5f);
             GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation); RaycastHit hit;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
             {
@@ -54,10 +54,10 @@ public class ObjectSpawner : MonoBehaviour
             }
             switch (crate.Type)
             {
-                case 20: newObj.name = "Crate " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = smallCrate; crate.spawnedObject = newObj; break;
-                case 23: newObj.name = "Barrel " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = barrel; crate.spawnedObject = newObj; break;
-                case 25: newObj.name = "Large Crate " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = largeCrate; crate.spawnedObject = newObj; break;
-                default:  newObj.name = "SpawnedObj " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = smallSwitch; newObj.GetComponentInChildren<MeshRenderer>().material = switchMaterial; crate.spawnedObject = newObj; break;
+                //case 20: newObj.name = "Crate " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = smallCrate; crate.spawnedObject = newObj; break;
+                //case 23: newObj.name = "Barrel " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = barrel; crate.spawnedObject = newObj; break;
+                //case 25: newObj.name = "Large Crate " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = largeCrate; crate.spawnedObject = newObj; break;
+                default:  newObj.name = "SpawnedObj " + index; crate.spawnedObject = newObj; break;
             }
             index++;
         }
@@ -81,7 +81,7 @@ public class ObjectSpawner : MonoBehaviour
                 default: monster.Name = "Mob " + index; break;
             }
             index++;
-            Vector3 pos = new Vector3(-monster.X, 0 , monster.Y);
+            Vector3 pos = new Vector3(-monster.X-.5f, 0 , monster.Y);
             GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation); RaycastHit hit;
             newObj.name = monster.Name;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
@@ -105,7 +105,7 @@ public class ObjectSpawner : MonoBehaviour
             index++;
             Vector3 pos = new Vector3(-pickup.x, 0, pickup.y);
             GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation); RaycastHit hit;
-            newObj.GetComponentInChildren<MeshRenderer>().material = objMaterial;
+            //newObj.GetComponentInChildren<MeshRenderer>().material = objMaterial;
             newObj.name = pickup.name;
             pickup.spawnedObject = newObj;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
@@ -117,15 +117,15 @@ public class ObjectSpawner : MonoBehaviour
             }
             switch (pickup.type)
             {
-                case 0: newObj.name = "Pistol " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = pistol;  pickup.spawnedObject = newObj; break;
-                case 1: newObj.name = "Shotgun " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = shotgun; pickup.spawnedObject = newObj; break;
-                case 7: newObj.name = "Battery " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = battery; pickup.spawnedObject = newObj; break;
-                case 9: newObj.name = "Pistol Clip " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = pistolClip; pickup.spawnedObject = newObj; break;
-                case 10: newObj.name = "Shotgun Shell " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = shotgunShell; pickup.spawnedObject = newObj; break;
-                case 16: newObj.name = "Auto Map " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = autoMap; pickup.spawnedObject = newObj; break;
-                case 20: newObj.name = "First Aid Kit " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = healthPack; pickup.spawnedObject = newObj; break;
-                case 21: newObj.name = "Dermpatch " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = dermPatch; pickup.spawnedObject = newObj; break;
-                default: newObj.name = "SpawnedObj " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = smallSwitch; pickup.spawnedObject = newObj; break;
+                //case 0: newObj.name = "Pistol " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = pistol;  pickup.spawnedObject = newObj; break;
+                //case 1: newObj.name = "Shotgun " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = shotgun; pickup.spawnedObject = newObj; break;
+                //case 7: newObj.name = "Battery " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = battery; pickup.spawnedObject = newObj; break;
+                //case 9: newObj.name = "Pistol Clip " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = pistolClip; pickup.spawnedObject = newObj; break;
+                //case 10: newObj.name = "Shotgun Shell " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = shotgunShell; pickup.spawnedObject = newObj; break;
+                //case 16: newObj.name = "Auto Map " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = autoMap; pickup.spawnedObject = newObj; break;
+                //case 20: newObj.name = "First Aid Kit " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = healthPack; pickup.spawnedObject = newObj; break;
+                //case 21: newObj.name = "Dermpatch " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = dermPatch; pickup.spawnedObject = newObj; break;
+                default: newObj.name = "SpawnedObj " + index; pickup.spawnedObject = newObj; break;
             }
             
         }
