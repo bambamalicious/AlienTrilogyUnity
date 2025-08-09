@@ -55,12 +55,12 @@ public class MapFinder : MonoBehaviour
     [ContextMenu("Generate Level")]
     public void GeneratateLevel()
     {
-        AlienTrilogyMapLoader.loader.Initiate(levelPath1+"L111LEV.MAP", levelPath1 + "111GFX.B16");
+        AlienTrilogyMapLoader.loader.Initiate(levelPath1+"L122LEV.MAP", levelPath1 + "122GFX.B16");
     }
 
     [ContextMenu("Generate Obj Data")]
     public void GeneratateObjects()
     {
-        ObjDataPuller.objectPuller.Initiate(levelPath1 + "L111LEV.MAP", levelPath1 + "111GFX.B16");
+        ObjDataPuller.objectPuller.Initiate(levelPath1 + "L122LEV.MAP", levelPath1 + "122GFX.B16");
     }
 }
