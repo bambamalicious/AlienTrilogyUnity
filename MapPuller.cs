@@ -1,20 +1,25 @@
+using System;
 using System.IO;
 using Unity.VisualScripting;
 using UnityEngine;
 
 public class MapFinder : MonoBehaviour
 {
+    public string levelNumber;
+
     public string gameDirectory = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\";
-    public string levelPath1 = "";
-    public string levelPath2 = "";
-    public string levelPath3 = "";
-    public string levelPath4 = "";
-    public string levelPath5 = "";
-    public string levelPath6 = "";
-    public string levelPath7 = "";
-    public string[] levels;
+    string levelPath1 = "";
+    string levelPath2 = "";
+    string levelPath3 = "";
+    string levelPath4 = "";
+    string levelPath5 = "";
+    string levelPath6 = "";
+    string levelPath7 = "";
+    string[] levels;
+    string fileDirectory;
 
     public static MapFinder finder;
+
 
     void Start()
     {
@@ -23,12 +28,12 @@ public class MapFinder : MonoBehaviour
             finder = this;
         }
         else { Destroy(gameObject);}
-        CheckDirectory();
+
     }
 
     public void CheckDirectory()
     {
-        if (File.Exists(gameDirectory + "Run.exe")) { gameDirectory =gameDirectory + "HDD\\TRILOGY\\CD\\"; }
+        if (File.Exists(gameDirectory + "Run.exe")) { gameDirectory = gameDirectory + "HDD\\TRILOGY\\CD\\"; }
         else if (File.Exists(gameDirectory + "TRILOGY.EXE")) { gameDirectory = gameDirectory + "CD\\"; }
         levelPath1 = gameDirectory + "SECT11\\";
         levelPath2 = gameDirectory + "SECT12\\";
@@ -38,29 +43,30 @@ public class MapFinder : MonoBehaviour
         levelPath6 = gameDirectory + "SECT32\\";
         levelPath7 = gameDirectory + "SECT90\\";
         levels =  new string[]{ levelPath1, levelPath2, levelPath3, levelPath4, levelPath5, levelPath6, levelPath7 };
-        ListLevels();
-    }
-
-    public void ListLevels()
-    {
-        foreach (string level in levels)
+        fileDirectory = levelNumber.Substring(0, 2) switch
         {
-            string[] levelFiles = Directory.GetFiles(level, "*.MAP");
-            foreach (string levelFile in levelFiles) { 
-                UnityEngine.Debug.Log(Path.GetFileNameWithoutExtension(levelFile)); 
-            }
-        }
+            "11" or "12" or "13" => levelPath1,
+            "14" or "15" or "16" => levelPath2,
+            "21" or "22" or "23" => levelPath3,
+            "24" or "26" => levelPath4,
+            "31" or "32" or "33" => levelPath5,
+            "35" or "36" or "37" or "38" or "39" => levelPath6,
+            "90" => levelPath7,
+            _ => throw new Exception("Unknown section selected!")
+        };
     }
 
     [ContextMenu("Generate Level")]
     public void GeneratateLevel()
     {
-        AlienTrilogyMapLoader.loader.Initiate(levelPath1+"L122LEV.MAP", levelPath1 + "122GFX.B16");
+        CheckDirectory();
+        AlienTrilogyMapLoader.loader.Initiate(fileDirectory +  "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.BIN");
     }
 
     [ContextMenu("Generate Obj Data")]
     public void GeneratateObjects()
     {
-        ObjDataPuller.objectPuller.Initiate(levelPath1 + "L122LEV.MAP", levelPath1 + "122GFX.B16");
+        CheckDirectory();
+        ObjDataPuller.objectPuller.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.BIN");
     }
 }
