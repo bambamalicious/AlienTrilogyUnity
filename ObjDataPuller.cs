@@ -8,8 +8,15 @@ using UnityEngine;
 using System.Diagnostics.Contracts;
 
 
-
 [System.Serializable] // Makes the class visible in the Inspector
+public class UnknownObj
+{
+    public string name;
+    public GameObject obj;
+    public int x, y, unknown1, unknown2, unknown3, unknown4, unknown5, unknown6; 
+}
+
+    [System.Serializable] // Makes the class visible in the Inspector
 public class Monster
 {
     public string Name;
@@ -17,18 +24,18 @@ public class Monster
     public int X;     // correct
     public int Y;     // also correct
     public int Z;     // 255 = floor item
-    public int unknown1;
+    public int rotation; //rotation. Confirmed
     public int Health; // Unknown what this actually is
     public int Drop;  // - This is the object health
     public int unknown3;
-    public int difficulty; // Difficulty level 0 = easy, 1 = normal 2= hard
+    public int difficulty; // Difficulty level 0 = easy, 1 = normal 2= hard Confirmed
     public int unknown4;
     public int unknown5;
-    public int unknown6;  //Rotation the monster is facing
+    public int unknown6;  
     public int unknown7;
     public int unknown8;
     public int Speed;    //100 is full speed
-    public int unknown9;
+    public int unknown9; // unused
     public int unknown10;
     public int unknown11;
     public int unknown12;
@@ -43,8 +50,8 @@ public class Crate
     public int X;
     public int Y;
     public int Type;
-    public int Drop;  //if crate, health
-    public int unknown1; //2 = enemy spawn, 0 = pickups
+    public int Drop;  //2 = enemy spawn, 0 = pickups
+    public int unknown1; 
     public int unknown2;
     public int Drop1; // - Index of pickup (when correctly calculated.
     public int Drop2;  // - index of second pickup (255 is no pickup)
@@ -80,6 +87,8 @@ public class ObjDataPuller : MonoBehaviour
     public List<Monster> monsters = new();
     public List<Crate> boxes = new();
     public List<Pickup> pickups = new();
+
+    public List<UnknownObj> unknowns = new();
 
     [Header("paths")]
     public string levelPath = ""; // path to the .MAP file
@@ -176,7 +185,22 @@ public class ObjDataPuller : MonoBehaviour
             //4//2//2//1//1//1//1//2//1//1
             map0br.BaseStream.Seek((mapLength * mapWidth * 16), SeekOrigin.Current);
 
-            map0br.BaseStream.Seek(unknown * 8, SeekOrigin.Current);
+            for (int i = 0; i < unknown; i++)
+            {
+                UnknownObj obj = new UnknownObj
+                {
+                    x = map0br.ReadByte(),
+                    y = map0br.ReadByte(),
+                    unknown1 = map0br.ReadByte(),
+                    unknown2 = map0br.ReadByte(),
+                    unknown3 = map0br.ReadByte(),
+                    unknown4 = map0br.ReadByte(),
+                    unknown5 = map0br.ReadByte(),
+                    unknown6 = map0br.ReadByte(),
+                };
+                unknowns.Add(obj);
+            }
+            //map0br.BaseStream.Seek(unknown * 8, SeekOrigin.Current);
 
             for (int i = 0; i < monsterCount; i++) // 28
             {
@@ -187,7 +211,7 @@ public class ObjDataPuller : MonoBehaviour
                     X = map0br.ReadByte(),
                     Y = map0br.ReadByte(),
                     Z = map0br.ReadByte(),
-                    unknown1 = map0br.ReadByte(),
+                    rotation = map0br.ReadByte(),
                     Health = map0br.ReadByte(),
                     Drop = map0br.ReadByte(),                    
                     unknown3 = map0br.ReadByte(),
@@ -235,9 +259,9 @@ public class ObjDataPuller : MonoBehaviour
                     X = map0br.ReadByte(),
                     Y = map0br.ReadByte(),
                     Type = map0br.ReadByte(),
+                    Drop = map0br.ReadByte(),
                     unknown1 = map0br.ReadByte(),
                     unknown2 = map0br.ReadByte(),
-                    Drop = map0br.ReadByte(),
                     Drop1 = map0br.ReadByte(),
                     Drop2 = map0br.ReadByte(),
                     unknown3 = map0br.ReadByte(),
@@ -249,10 +273,7 @@ public class ObjDataPuller : MonoBehaviour
                     rotation = map0br.ReadByte(),
                     unknown10 = map0br.ReadByte()
                 };
-                if (box.Type != 20 && box.Type != 23 && box.Type != 25)
-                {
-                    boxes.Add(box);
-                }
+                boxes.Add(box);
             }
             //MessageBox.Show($"Doors : {ms.Position}"); // 479196 + 20 = 479216 ( L111LEV.MAP )
             // doors formula = value multiplied by 8 - (8 bytes one element)
