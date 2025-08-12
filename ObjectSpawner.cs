@@ -1,301 +1,428 @@
+using System;
+using System.IO;
+using System.Text;
+using System.Linq;
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using UnityEngine;
+using System.Diagnostics.Contracts;
 
-public class ObjectSpawner : MonoBehaviour
+public class BndSection
 {
-    //3D models to instantiate
-    //[Header("3D Objects")]
-    private GameObject dummyObj;
-    public GameObject colObj;
-    //public Mesh smallCrate, largeCrate, barrel, smallSwitch;
-    //public Material switchMaterial;
-    //public Mesh pistolClip, shotgunShell, pistol, shotgun, dermPatch,autoMap, healthPack, battery;
-    private Material objMaterial;
-    public static ObjectSpawner spawner;
-    private GameObject colFrame, pathCover, crateCover, mobCover, pickupCover, liftCover, doorCover;
+    public string Name { get; set; } = "";
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class CollisionNode
+{
+    public string name;
+    public GameObject obj;
+    public int unknown1, unknown2, unknown3, unknown4, unknown5, unknown6, unknown7, unknown8, unknown9, unknown10, unknown11, unknown12, unknown13, unknown14, unknown15, unknown16;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class PathNode
+{
+    public string name;
+    public GameObject obj;
+    public int x, y, unknown1, unknown2, nodeA, nodeB, nodeC, nodeD; 
+}
+
+    [System.Serializable] // Makes the class visible in the Inspector
+public class Monster
+{
+    public string Name;
+    public GameObject spawnedObj;
+    public int Type;   //1= FH Egg 2 = Facehugger, 3 = chestburster 6 = Warrior 8= Praetorian, 10 = body 11 = WY Guard
+    public int X;     // correct
+    public int Y;     // also correct
+    public int Z;     // 255 = floor item
+    public int rotation; //rotation. Confirmed
+    public int Health; // Unknown what this actually is
+    public int Drop;  // - This is the object health
+    public int unknown3;
+    public int difficulty; // Difficulty level 0 = easy, 1 = normal 2= hard Confirmed
+    public int unknown4;
+    public int unknown5;
+    public int unknown6;  
+    public int unknown7;
+    public int unknown8;
+    public int Speed;    //100 is full speed
+    public int unknown9; // unused
+    public int unknown10;
+    public int unknown11;
+    public int unknown12;
+    public int unknown13;  //Invulnerability from spawn / release
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Crate
+{
+    public string name;
+    public GameObject spawnedObject;
+    public int X;
+    public int Y;
+    public int Type;
+    public int Drop;  //2 = enemy spawn, 0 = pickups
+	public int unknown1;
+    public int unknown2;
+    public int Drop1; // - Index of pickup (when correctly calculated.
+    public int Drop2;  // - index of second pickup (255 is no pickup)
+    public int unknown3;
+    public int unknown4;
+    public int unknown5;
+    public int unknown6;
+    public int unknown7;
+    public int unknown8;
+    public int rotation;  //Rotation of object, seems to be 0-3
+    public int unknown10;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Pickup
+{
+    public string name;
+    public GameObject spawnedObject;
+    public int x;
+    public int y;
+    public int type;
+    public int amount;
+    public int multiplier;
+    public int unknown1;
+    public int z;
+    public int unknown2;
+}
+
+[System.Serializable]
+
+public class Door
+{
+    public GameObject spawnedObject;
+    public int x, y, unknown, time, tag, unknown2, rotation, index;
+    public string name;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Lifts
+{
+    public string name;
+    public GameObject spawnedObject;
+    public byte x, y, z, unknown1, unknown2, unknown3, unknown4, unknown5, unknown6, unknown7, unknown8, unknown9, unknown10, unknown11, unknown12, unknown13;          // x coordinate of the lift
+
+}
+
+public class ObjDataPuller : MonoBehaviour
+{
+
+    [Header("Object Lists")]
+    public List<CollisionNode> collisions = new();
+    public List<Monster> monsters = new();
+    public List<Crate> boxes = new();
+    public List<Pickup> pickups = new();
+    public List<Door> doors = new();
+    public List<Lifts> lifts = new();
+
+    public List<PathNode> pathNodes = new();
+
+    //[Header("paths")]
+    private string levelPath = ""; // path to the .MAP file
+    private string texturePath = ""; // path to the .B16 file
+
+    [Header("Map Strings")]
+    public string unknownMapBytes1;
+    public string unknownMapBytes2;
+    public string unknownMapBytes3;
+    public string unknownMapBytes4;
+    public string random1;
+    public string random2;
+    public string random3;
+    public string random4;
+    public string random5;
+    public string random6;
+    //Map strings
+    public string mapLengthString, mapWidthString, playerStartXString, playerStartYString, monsterCountString, pickupCountString, boxCountString, doorCountString, playerStartAngleString, liftCountString;
+
+
+    public Byte[] remainderBytes;
+
+    public static ObjDataPuller objectPuller;
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-		if (spawner == null)
+        if(objectPuller == null)
         {
-            spawner = this;
+            objectPuller = this;
         }
         else
         {
             Destroy(gameObject);
         }
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        objMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-
-    }
-	
-    [ContextMenu("SpawnAll")]
-    public void SpawnAll()
-    {
-        SpawnPaths();
-		SpawnCrates();
-		SpawnMobs();
-		SpawnPickups();
-		SpawnLifts();
-        SpawnDoors();
-        ObjDataPuller.objectPuller.pathNodes.Clear();
-        ObjDataPuller.objectPuller.boxes.Clear();
-        ObjDataPuller.objectPuller.monsters.Clear();
-        ObjDataPuller.objectPuller.pickups.Clear();
-        ObjDataPuller.objectPuller.lifts.Clear();
-        ObjDataPuller.objectPuller.doors.Clear();
     }
 
-    [ContextMenu ("ClearAll")]
-
-    public void ClearAll()
+    [ContextMenu("Pull Object Data")]
+    // Update is called once per frame
+    public void Initiate(string levelToLoad, string texturesToLoad)
     {
-        Destroy(pathCover);
-        Destroy(crateCover);
-        Destroy(mobCover);
-        Destroy(pickupCover);
-        Destroy(doorCover);
-        Destroy(liftCover);
+        levelPath = levelToLoad;
+        texturePath = texturesToLoad;
+        byte[] mapFileData = File.ReadAllBytes(levelPath);
+        Debug.Log("Map geometry bytes: " + mapFileData.Length);
+        GetData(mapFileData);
     }
 
-    [ContextMenu("Spawn Collisions")]
-    public void SpawnCollisions()
+    public void GetData(byte[] data)
     {
-        GameObject colCover = Instantiate(new GameObject(), new Vector3(0,0,0), transform.rotation);
-        colCover.transform.name = "Collision Nodes";
-        int index = 0;
-        int xCount = 1;
-        int yCount = 0;
-        foreach (CollisionNode col in ObjDataPuller.objectPuller.collisions)
+        // Read MAP0 section
+        List<BndSection> levelSections = LoadSection(data, "MAP0");
+        using var ms = new MemoryStream(levelSections[0].Data);
+        using var map0br = new BinaryReader(ms);
+        // Read number of vertices
+        ushort vertCount = map0br.ReadUInt16();
+        Debug.Log("Number of vertices: " + vertCount);
+        ushort quadCount = map0br.ReadUInt16();         // Read number of quads
+        Debug.Log("Number of quads: " + quadCount);
+        ushort mapLength = map0br.ReadUInt16();
+        mapLengthString = mapLength.ToString();
+        ushort mapWidth = map0br.ReadUInt16();
+        mapWidthString = mapWidth.ToString();            // display map width
+        ushort playerStartX = map0br.ReadUInt16();
+        playerStartXString = playerStartX.ToString();        // display player start X coordinate
+        ushort playerStartY = map0br.ReadUInt16();
+        playerStartYString = playerStartY.ToString();    // display player start Y coordinate
+        byte unknown = map0br.ReadByte();                   // unknown 1
+        map0br.ReadByte();                                 // unknown 2                                                          
+        ushort monsterCount = map0br.ReadUInt16();
+        monsterCountString = monsterCount.ToString();        // display monster count
+        ushort pickupCount = map0br.ReadUInt16();
+        pickupCountString = pickupCount.ToString();         // display pickup count
+        ushort boxCount = map0br.ReadUInt16();
+        boxCountString = boxCount.ToString();           // display box count
+        ushort doorCount = map0br.ReadUInt16();             // door count
+        doorCountString = doorCount.ToString();          // display door count
+        ushort liftCount = map0br.ReadUInt16();             // lift count
+        liftCountString = liftCount.ToString();          // display lift count
+        ushort playerStart = map0br.ReadUInt16();      // player start angle
+        playerStartAngleString = playerStart.ToString();   // display player start angle
+        // unknown bytes
+        ushort unknown1 = map0br.ReadUInt16();                                 // unknown 1
+        unknownMapBytes1 = unknown1.ToString();
+        ushort unknownmap2 = map0br.ReadByte();
+        unknownMapBytes2 = unknownmap2.ToString();
+        ushort unknownmap3 = map0br.ReadByte();
+        unknownMapBytes3 = unknownmap3.ToString();
+
+        ushort random1string = map0br.ReadByte();
+        random1 = random1string.ToString();
+        ushort random2string = map0br.ReadByte();
+        random2 = random2string.ToString();
+        ushort random3string = map0br.ReadByte();
+        random3 = random3string.ToString();
+        ushort random4string = map0br.ReadByte();
+        random4 = random4string.ToString();
+        ushort random5string = map0br.ReadByte();
+        random5 = random5string.ToString();
+        ushort random6string = map0br.ReadByte();
+        random6 = random6string.ToString();
+        // unknown 3 & 4
+        // vertice formula - multiply the value of these two bytes by 8 - (6 bytes for 3 points + 2 bytes zeros)
+        map0br.BaseStream.Seek(vertCount * 8, SeekOrigin.Current);
+        // quad formula - the value of these 2 bytes multiply by 20 - (16 bytes dot indices and 4 bytes info)
+        map0br.BaseStream.Seek(quadCount * 20, SeekOrigin.Current);
+        //MessageBox.Show($"{ms.Position}"); // 323148 + 20 = 323168 ( L111LEV.MAP )
+        // size formula - for these bytes = multiply length by width and multiply the resulting value by 16 - (16 bytes describe one cell.)
+        // collision 16
+        //4//2//2//1//1//1//1//2//1//1
+        //map0br.BaseStream.Seek((mapLength * mapWidth * 16), SeekOrigin.Current); //skip collision nodes
+        int colSections = mapLength * mapWidth;
+        for (int i = 0; i < colSections; i++)
         {
-            Vector3 pos = new Vector3(xCount+.5f, -10, yCount);
-            GameObject newObj = Instantiate(colObj, pos, transform.rotation, colCover.transform);
-            newObj.transform.localPosition = pos;
-            RaycastHit hit;
-            newObj.name = "PathNode " + index;
-            col.obj= newObj;
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up * 15, out hit))
+            CollisionNode node = new CollisionNode
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
-            }
-            index++;
-            xCount--;
-            if (xCount < -int.Parse(ObjDataPuller.objectPuller.mapLengthString)+1)
-            {
-                yCount++;
-                xCount = 0;
-            }
+                unknown1 = map0br.ReadInt32(),
+                //unknown2 = map0br.ReadByte(),
+                //unknown3 = map0br.ReadByte(),
+                //unknown4 = map0br.ReadByte(),
+                unknown5 = map0br.ReadByte(),
+                unknown6 = map0br.ReadByte(),
+                unknown7 = map0br.ReadByte(),
+                unknown8 = map0br.ReadByte(),
+                unknown9 = map0br.ReadByte(),
+                unknown10 = map0br.ReadByte(),
+                unknown11 = map0br.ReadByte(),
+                unknown12 = map0br.ReadByte(),
+                unknown13 = map0br.ReadByte(),
+                unknown14 = map0br.ReadByte(),
+                unknown15 = map0br.ReadByte(),
+                unknown16 = map0br.ReadByte(),
+                name = "Collision Node " + i
+            };
+            collisions.Add(node);
         }
-    }
 
-    [ContextMenu("Spawn Paths")]
-    public void SpawnPaths()
-    {
-        pathCover = Instantiate(new GameObject(), new Vector3(0,0,0), transform.rotation);
-        pathCover.transform.name = "Path Nodes";
-        int index = 0;
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        Material spawnMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        spawnMaterial.color = Color.red;
-        foreach (PathNode obj in ObjDataPuller.objectPuller.pathNodes)
+        for (int i = 0; i < unknown; i++)
         {
-            Vector3 pos = new Vector3(-obj.x, 0 - 10, obj.y);
-            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation, pathCover.transform); 
-            newObj.transform.localPosition = pos;
-            newObj.GetComponent<MeshRenderer>().material = spawnMaterial;
-            RaycastHit hit;
-            newObj.name = "PathNode " + index;
-            obj.obj = newObj;
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+            PathNode obj = new PathNode
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
-            }
-            index++;
+                x = map0br.ReadByte(),
+                y = map0br.ReadByte(),
+                unknown1 = map0br.ReadByte(),
+                unknown2 = map0br.ReadByte(),
+                nodeA = map0br.ReadByte(),
+                nodeB = map0br.ReadByte(),                    
+                nodeC = map0br.ReadByte(),
+                nodeD = map0br.ReadByte(),
+            };
+            pathNodes.Add(obj);
         }
-    }
+        //map0br.BaseStream.Seek(unknown * 8, SeekOrigin.Current);
 
-    [ContextMenu("Spawn Crates")]
-    public void SpawnCrates()
-    {
-        crateCover = Instantiate(new GameObject(), new Vector3(0,0,0), transform.rotation);
-        crateCover.transform.name = "Box Objects";
-        int index = 0;
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Material crateMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        crateMaterial.color = Color.brown;
-        foreach (Crate crate in ObjDataPuller.objectPuller.boxes)
+        for (int i = 0; i < monsterCount; i++) // 28
         {
-            Vector3 pos = new Vector3(-crate.X-.5f, 0 - 10, crate.Y);
-            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation, crateCover.transform);
-            newObj.GetComponent<MeshRenderer>().material = crateMaterial;
-            newObj.transform.localPosition = pos;
-            RaycastHit hit;
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+            Monster monster = new Monster
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
-            }
-            switch (crate.Type)
-            {
-                //case 20: newObj.name = "Crate " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = smallCrate; crate.spawnedObject = newObj; break;
-                //case 23: newObj.name = "Barrel " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = barrel; crate.spawnedObject = newObj; break;
-                //case 25: newObj.name = "Large Crate " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = largeCrate; crate.spawnedObject = newObj; break;
-                default:  newObj.name = "SpawnedObj " + index; crate.spawnedObject = newObj; break;
-            }
-            index++;
+                Name = "Monster Spawn " + i,
+                Type = map0br.ReadByte(),
+                X = map0br.ReadByte(),
+                Y = map0br.ReadByte(),
+                Z = map0br.ReadByte(),
+                rotation = map0br.ReadByte(),
+                Health = map0br.ReadByte(),
+                Drop = map0br.ReadByte(),                    
+                unknown3 = map0br.ReadByte(),
+                difficulty = map0br.ReadByte(),
+                unknown4 = map0br.ReadByte(),
+                unknown5 = map0br.ReadByte(),
+                unknown6 = map0br.ReadByte(),
+                unknown7 = map0br.ReadByte(),
+                unknown8 = map0br.ReadByte(),
+                Speed = map0br.ReadByte(),
+                unknown9 = map0br.ReadByte(),
+                unknown10 = map0br.ReadByte(),
+                unknown11 = map0br.ReadByte(),
+                unknown12 = map0br.ReadByte(),
+                unknown13 = map0br.ReadByte(),
+            };
+            monsters.Add(monster);
         }
-    }
 
-    [ContextMenu("Spawn Mobs")]
-    public void SpawnMobs()
-    {
-        mobCover = Instantiate(new GameObject(), new Vector3(0, 0, 0), transform.rotation);
-        mobCover.transform.name = "Actor Spawns";
-        int index = 0;
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        Material mobMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        mobMaterial.color = Color.pink;
-        foreach (Monster monster in ObjDataPuller.objectPuller.monsters)
+        //MessageBox.Show($"Pickups : {ms.Position}"); // 478268 + 20 = 478288 ( L111LEV.MAP )
+        // pickup formula = number of elements multiplied by 8 - (8 bytes per pickup)
+        for (int i = 0; i < pickupCount; i++) // 28
         {
-            switch (monster.Type){
-                case 1: monster.Name = "FH Egg " + index; break;
-                case 2: monster.Name = "Facehugger " + index; break;
-                case 3: monster.Name = "ChestBurster " + index; break;
-                case 6: monster.Name = "Warrior " + index; break;
-                case 8: monster.Name = "Praetorian " + index; break;
-                case 10: monster.Name = "Wall Body " + index; break;
-                case 11: monster.Name = "Security Guard " + index; break;
-                default: monster.Name = "Mob " + index; break;
-            }
-            index++;
-            Vector3 pos = new Vector3(-monster.X-.5f, 0 , monster.Y);
-            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation, mobCover.transform);
-            newObj.GetComponent<MeshRenderer>().material = mobMaterial;
-            newObj.transform.localPosition = pos;
-            newObj.name = monster.Name;
-            monster.spawnedObj = newObj;
-            RaycastHit hit;
-
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+            Pickup pickup = new Pickup
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
-            }
+                name = "Pickup " + i,
+                x = map0br.ReadByte(),
+                y = map0br.ReadByte(),
+                type = map0br.ReadByte(),
+                amount = map0br.ReadByte(),
+                multiplier = map0br.ReadByte(),
+                unknown1 = map0br.ReadByte(),// unk1
+                z = map0br.ReadByte(),
+                unknown2 = map0br.ReadByte(), // unk2
+            };
+            pickups.Add(pickup);
         }
-    }
 
-    [ContextMenu("Spawn Pickups")]
-    public void SpawnPickups()
-    {
-        pickupCover = Instantiate(new GameObject(), new Vector3(0, 0, 0), transform.rotation);
-        pickupCover.transform.name = "Pickup Spawns";
-        int index = 0;
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Material pickupMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        pickupMaterial.color = Color.blue;
-        foreach (Pickup pickup in ObjDataPuller.objectPuller.pickups)
+        //MessageBox.Show($"Boxes : {ms.Position}"); // 478492 + 20 = 478512 ( L111LEV.MAP )
+        // boxes formula = number of elements multiplied by 16 - (16 bytes per box)
+        for (int i = 0; i < boxCount; i++) // 44 -> 44 objects in L111LEV.MAP ( Barrels, Boxes, Switches )
         {
-            pickup.name = "Pickup " + index;
-            index++;
-            Vector3 pos = new Vector3(-pickup.x, 0, pickup.y);
-            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation, pickupCover.transform);
-            newObj.GetComponent<MeshRenderer>().material = pickupMaterial;
-            newObj.transform.localPosition = pos;
-            newObj.name = pickup.name;
-            pickup.spawnedObject = newObj;
-            RaycastHit hit;
-
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+            Crate box = new Crate
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
-            }
-            switch (pickup.type)
-            {
-                //case 0: newObj.name = "Pistol " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = pistol;  pickup.spawnedObject = newObj; break;
-                //case 1: newObj.name = "Shotgun " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = shotgun; pickup.spawnedObject = newObj; break;
-                //case 7: newObj.name = "Battery " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = battery; pickup.spawnedObject = newObj; break;
-                //case 9: newObj.name = "Pistol Clip " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = pistolClip; pickup.spawnedObject = newObj; break;
-                //case 10: newObj.name = "Shotgun Shell " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = shotgunShell; pickup.spawnedObject = newObj; break;
-                //case 16: newObj.name = "Auto Map " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = autoMap; pickup.spawnedObject = newObj; break;
-                //case 20: newObj.name = "First Aid Kit " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = healthPack; pickup.spawnedObject = newObj; break;
-                //case 21: newObj.name = "Dermpatch " + index; newObj.GetComponentInChildren<MeshFilter>().mesh = dermPatch; pickup.spawnedObject = newObj; break;
-                default: newObj.name = "SpawnedObj " + index; pickup.spawnedObject = newObj; break;
-            }
-            
+                X = map0br.ReadByte(),
+                Y = map0br.ReadByte(),
+                Type = map0br.ReadByte(),
+                Drop = map0br.ReadByte(),
+                unknown1 = map0br.ReadByte(),
+                unknown2 = map0br.ReadByte(),
+                Drop1 = map0br.ReadByte(),
+                Drop2 = map0br.ReadByte(),
+                unknown3 = map0br.ReadByte(),
+                unknown4 = map0br.ReadByte(),
+                unknown5 = map0br.ReadByte(),
+                unknown6 = map0br.ReadByte(),
+                unknown7 = map0br.ReadByte(),
+                unknown8 = map0br.ReadByte(),
+                rotation = map0br.ReadByte(),
+                unknown10 = map0br.ReadByte()
+            };
+            boxes.Add(box);
         }
-    }
-
-    [ContextMenu("Spawn Lifts")]
-
-    public void SpawnLifts()
-    {
-        liftCover = Instantiate(new GameObject(), new Vector3(0, 0, 0), transform.rotation);
-        liftCover.name = "Lift Objects";
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Material liftMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        liftMaterial.color = Color.yellow;
-        int index = 0;
-
-        foreach (Lifts obj in ObjDataPuller.objectPuller.lifts)
+         for (int i = 0; i < doorCount; i++) // 6 -> 6 doors in L111LEV.MAP
         {
-            Vector3 pos = new Vector3(-obj.x, 0 - 10, obj.y);
-            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation, liftCover.transform);
-            newObj.GetComponent<MeshRenderer>().material = liftMaterial;
-            newObj.transform.localPosition = pos;
-            newObj.name = "Lift " + index;
-            obj.spawnedObject = newObj;
-            RaycastHit hit;
 
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+            Door door = new Door
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
-            }
-            index++;
+                x = map0br.ReadByte(),
+                y = map0br.ReadByte(),
+                unknown = map0br.ReadByte(),
+                time = map0br.ReadByte(),
+                tag = map0br.ReadByte(),
+                unknown2 = map0br.ReadByte(),
+                rotation = map0br.ReadByte(),
+                index = map0br.ReadByte()
+            };
+            doors.Add(door);
         }
+
+        for (int i = 0; i < liftCount; i++) // 16 doors in L141LEV.MAP
+		{
+            Lifts lift = new Lifts
+            {
+                x = map0br.ReadByte(),
+                y = map0br.ReadByte(),
+                z = map0br.ReadByte(),
+                unknown1 = map0br.ReadByte(),
+                unknown2 = map0br.ReadByte(),
+                unknown3 = map0br.ReadByte(),   
+                unknown4 = map0br.ReadByte(),
+                unknown5 = map0br.ReadByte(),
+                unknown6 = map0br.ReadByte(),
+                unknown7 = map0br.ReadByte(),
+                unknown8 = map0br.ReadByte(),
+                unknown9 = map0br.ReadByte(),
+                unknown10 = map0br.ReadByte(),
+                unknown11 = map0br.ReadByte(),
+                unknown12 = map0br.ReadByte(),
+                unknown13 = map0br.ReadByte(),
+            };
+            lifts.Add(lift);
+		}
+        long remainingBytes = map0br.BaseStream.Length - map0br.BaseStream.Position;
+        remainderBytes = map0br.ReadBytes((int)remainingBytes);
     }
 
-    [ContextMenu("Spawn Doors")]
-    public void SpawnDoors()
+    private List<BndSection> LoadSection(byte[] bnd, string section)
     {
-        doorCover = Instantiate(new GameObject(), new Vector3(0, 0, 0), transform.rotation);
-        doorCover.name = "Doors";
-        dummyObj = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        Material doorMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        doorMaterial.color = Color.white;
-        int index = 0;
-        foreach (Door obj in ObjDataPuller.objectPuller.doors)
+        var sections = new List<BndSection>();
+        using var br = new BinaryReader(new MemoryStream(bnd));
+        string formTag = Encoding.ASCII.GetString(br.ReadBytes(4)); // Read FORM header
+        if (formTag != "FORM") { throw new Exception("Invalid BND file: missing FORM header."); }
+        int formSize = BitConverter.ToInt32(br.ReadBytes(4).Reverse().ToArray(), 0);
+        string platform = Encoding.ASCII.GetString(br.ReadBytes(4)); // e.g., "PSXT"
+        while (br.BaseStream.Position + 8 <= br.BaseStream.Length) // Parse chunks
         {
-            Vector3 pos = new Vector3(-obj.x, 0 - 10, obj.y);
-            GameObject newObj = GameObject.Instantiate(dummyObj, pos, transform.rotation, doorCover.transform);
-            newObj.GetComponent<MeshRenderer>().material = doorMaterial;
-            newObj.transform.localPosition = pos;
-            newObj.name = "Door " + index;
-            obj.spawnedObject = newObj;
-            RaycastHit hit;
+            string chunkName = Encoding.ASCII.GetString(br.ReadBytes(4));
+            int chunkSize = BitConverter.ToInt32(br.ReadBytes(4).Reverse().ToArray(), 0);
+            if (br.BaseStream.Position + chunkSize > br.BaseStream.Length) { break; }
+            byte[] chunkData = br.ReadBytes(chunkSize);
+            if (chunkName.StartsWith(section)) { sections.Add(new BndSection { Name = chunkName, Data = chunkData }); }
+            if ((chunkSize % 2) != 0) { br.BaseStream.Seek(1, SeekOrigin.Current); } // IFF padding to 2-byte alignment
+        }
+        return sections;
+    }
 
-            if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out hit))
+    private void ExportToCSV(List<CollisionNode> data, string filePath)
+    {
+        using (StreamWriter writer = new StreamWriter(filePath))
+        {
+            foreach (var row in data)
             {
-                if (hit.collider != null)
-                {
-                    newObj.transform.position = hit.point;
-                }
+                string line = string.Join(",", row.name,row.unknown1,row.unknown5,row.unknown6, row.unknown7, row.unknown8, row.unknown9, row.unknown10, row.unknown11, row.unknown12, row.unknown13, row.unknown14, row.unknown15, row.unknown16);
+                writer.WriteLine(line);
             }
-            index++;
         }
     }
 }
