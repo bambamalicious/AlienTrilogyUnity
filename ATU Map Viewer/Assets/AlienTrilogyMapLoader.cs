@@ -13,14 +13,15 @@ using System.Diagnostics.Contracts;
 */
     public class AlienTrilogyMapLoader : MonoBehaviour
 {
-    [Header("PATHS")]
-    string levelPath = ""; // path to the .MAP file
-    string texturePath = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\HDD\\TRILOGY\\CD\\L111LEV.B16"; // path to the .B16 file
+    //[Header("PATHS")]
+    private string levelPath = ""; // path to the .MAP file
+    private string texturePath = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\HDD\\TRILOGY\\CD\\L111LEV.B16"; // path to the .B16 file
 
     [Header("SETTINGS")]
-    int textureSize = 256; // pixel dimensions
-    float scalingFactor = 1/512f; // scaling corrections
-    public Material baseMaterial;
+	// TODO : Adjust this dynamically
+    public int textureSize = 256; // pixel dimensions
+    private float scalingFactor = 1/512f; // scaling corrections
+    private Material baseMaterial;
 
     // These store the mesh data for Unity
     private List<Vector3> meshVertices = new();
@@ -58,6 +59,8 @@ using System.Diagnostics.Contracts;
 	*/
     public void Initiate(string levelToLoad, string texturesToLoad)
     {
+		baseMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+		
         levelPath = levelToLoad;
         texturePath = texturesToLoad;
         // Build map textures
@@ -695,8 +698,9 @@ using System.Diagnostics.Contracts;
 
         // Un-mirror
         child.transform.localScale = new Vector3(-1f, 1f, 1f) * scalingFactor;
-        child.transform.localPosition = new Vector3(-int.Parse(ObjDataPuller.objectPuller.mapLengthString) / 2, 0, int.Parse(ObjDataPuller.objectPuller.mapWidthString) / 2);
+        child.transform.localPosition = new Vector3(-int.Parse(ObjDataPuller.objectPuller.mapLengthString) / 2, 2, int.Parse(ObjDataPuller.objectPuller.mapWidthString) / 2);
         child.AddComponent<MeshCollider>();
+
 
         Debug.Log("mesh.subMeshCount = " + mesh.subMeshCount);
     }
