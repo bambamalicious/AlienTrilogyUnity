@@ -6,7 +6,7 @@ using UnityEngine;
 
 // Before using these scripts, ensure you have created a "Legacy Transparent Cutout" Material,
 // and a sphere gameobject and assigned these to the Map Loader and Object Spawner scripts.
-public class MapFinder : MonoBehaviour
+public class MapPuller : MonoBehaviour
 {
     public string levelNumber;
 
@@ -18,19 +18,18 @@ public class MapFinder : MonoBehaviour
     string levelPath5 = "";
     string levelPath6 = "";
     string levelPath7 = "";
-    string[] levels;
     string fileDirectory;
 
-    public static MapFinder finder;
+    public static MapPuller finder;
 
 
     void Start()
     {
-        if(finder == null)
+        if (finder == null)
         {
             finder = this;
         }
-        else { Destroy(gameObject);}
+        else { Destroy(gameObject); }
 
     }
 
@@ -45,7 +44,6 @@ public class MapFinder : MonoBehaviour
         levelPath5 = gameDirectory + "SECT31\\";
         levelPath6 = gameDirectory + "SECT32\\";
         levelPath7 = gameDirectory + "SECT90\\";
-        levels =  new string[]{ levelPath1, levelPath2, levelPath3, levelPath4, levelPath5, levelPath6, levelPath7 };
         fileDirectory = levelNumber.Substring(0, 2) switch
         {
             "11" or "12" or "13" => levelPath1,
@@ -59,15 +57,25 @@ public class MapFinder : MonoBehaviour
         };
     }
 
-    [ContextMenu("Generate Obj Data & Create Level")]
+    [ContextMenu("Create Level and Spawn Map Only")]
+    public void GeneratateMap()
+    {
+        if (levelNumber != "")
+        {
+            CheckDirectory();
+            AlienTrilogyMapLoader.loader.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.B16");
+        }
+        else { throw new Exception("Level number required in inspector"); }
+    }
+
+    [ContextMenu("Create Level and Generate Object Data")]
     public void GeneratateObjects()
     {
         if (levelNumber != "")
         {
             CheckDirectory();
-            ObjDataPuller.objectPuller.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.B16");
             AlienTrilogyMapLoader.loader.Initiate(fileDirectory + "L" + levelNumber + "LEV.MAP", fileDirectory + levelNumber + "GFX.B16");
-			//ObjectSpawner.spawner.SpawnAll();
+            ObjectSpawner.spawner.SpawnAll();
         }
         else { throw new Exception("Level number required in inspector"); }
     }
