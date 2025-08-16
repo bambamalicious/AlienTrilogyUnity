@@ -388,7 +388,6 @@ GameObject:
   - component: {fileID: 457011032}
   - component: {fileID: 457011031}
   - component: {fileID: 457011030}
-  - component: {fileID: 457011029}
   - component: {fileID: 457011028}
   m_Layer: 0
   m_Name: GameObject
@@ -409,37 +408,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ebe11269a7b5dd04bb866ea18beb3550, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  textureSize: 256
---- !u!114 &457011029
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 457011027}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f03004049f3224418734e6be47be28d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  generateCSV: 0
+  pathNodes: []
   collisions: []
   monsters: []
   boxes: []
   pickups: []
   doors: []
   lifts: []
-  pathNodes: []
   unknownMapBytes1: 
   unknownMapBytes2: 
   unknownMapBytes3: 
-  unknownMapBytes4: 
-  random1: 
-  random2: 
-  random3: 
-  random4: 
-  random5: 
-  random6: 
   mapLengthString: 
   mapWidthString: 
   playerStartXString: 
@@ -451,6 +429,9 @@ MonoBehaviour:
   playerStartAngleString: 
   liftCountString: 
   remainderBytes: 
+  textureSize: 256
+  generateCSV: 0
+  child: {fileID: 0}
 --- !u!114 &457011030
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -1,27 +1,226 @@
+using NUnit.Framework;
 using System;
-using System.IO;
-using System.Text;
-using System.Linq;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using UnityEngine;
+using System.Diagnostics;
 using System.Diagnostics.Contracts;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using Unity.Mathematics;
+using Unity.VisualScripting;
+using UnityEngine;
+using UnityEngine.UIElements;
+
+public class TimerExample : MonoBehaviour
+{
+    private Stopwatch stopwatch;
+
+    void Start()
+    {
+        stopwatch = new Stopwatch();
+
+        // Start timer
+        stopwatch.Start();
+        UnityEngine.Debug.Log("Timer started.");
+    }
+
+    void Update()
+    {
+        // Example: stop timer when space is pressed
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            stopwatch.Stop();
+            UnityEngine.Debug.Log($"Timer stopped. Elapsed: {stopwatch.ElapsedMilliseconds} ms");
+
+            // If you want to restart for another run:
+            stopwatch.Reset();
+            stopwatch.Start();
+        }
+    }
+}
+
+public class BndSection
+{
+    public string Name { get; set; } = "";
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class CollisionNode
+{
+    public string Name;
+    public GameObject obj;
+    public byte unknown1;
+    public byte unknown2;
+    public byte unknown3;
+    public byte unknown4;
+    public byte unknown5;
+    public byte unknown6;
+    public byte unknown7;
+    public byte unknown8;
+    public byte ceilingFog;
+    public byte floorFog;
+    public byte ceilingHeight;
+    public byte floorHeight;
+    public byte unknown13;
+    public byte unknown14;
+    public byte Lighting;
+    public byte Action;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class PathNode
+{
+    public string Name;
+    public GameObject obj;
+    public byte X;
+    public byte Y;
+    public byte unused;
+    public byte AlternateNode;
+    public byte NodeA;
+    public byte NodeB;
+    public byte NodeC;
+    public byte NodeD;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Monster
+{
+    public string Name;
+    public GameObject spawnedObj;
+    public byte Type;
+    public byte X;
+    public byte Y;
+    public byte Z;
+    public byte Rotation;
+    public byte Health;
+    public byte Drop;
+    public byte unknown2;
+    public byte Difficulty;
+    public byte unknown4;
+    public byte unknown5;
+    public byte unknown6;
+    public byte unknown7;
+    public byte unknown8;
+    public byte Speed;
+    public byte unknown9;
+    public byte unknown10;
+    public byte unknown11;
+    public byte unknown12;
+    public byte unknown13;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Crate
+{
+    public string Name;
+    public GameObject spawnedObject;
+    public byte X;
+    public byte Y;
+    public byte Type;
+    public byte Drop;
+    public byte unknown1;
+    public byte unknown2;
+    public byte Drop1;
+    public byte Drop2;
+    public byte unknown3;
+    public byte unknown4;
+    public byte unknown5;
+    public byte unknown6;
+    public byte unknown7;
+    public byte unknown8;
+    public byte Rotation;
+    public byte unknown10;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Pickup
+{
+    public string Name;
+    public GameObject spawnedObject;
+    public byte X;
+    public byte Y;
+    public byte Type;
+    public byte Amount;
+    public byte Multiplier;
+    public byte unknown1;
+    public byte Z;
+    public byte unknown2;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Door
+{
+    public string name;
+    public GameObject spawnedObject;
+    public byte X;
+    public byte Y;
+    public byte unknown;
+    public byte Time;
+    public byte Tag;
+    public byte unknown2;
+    public byte Rotation;
+    public byte Index;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class Lifts
+{
+    public string Name;
+    public GameObject spawnedObject;
+    public byte X;
+    public byte Y;
+    public byte Z;
+    public byte unknown1;
+    public byte unknown2;
+    public byte unknown3;
+    public byte unknown4;
+    public byte unknown5;
+    public byte unknown6;
+    public byte unknown7;
+    public byte unknown8;
+    public byte unknown9;
+    public byte unknown10;
+    public byte unknown11;
+    public byte unknown12;
+    public byte unknown13;
+}
 
 /*
 	Alien Trilogy Data Loader
 	Load data directly from original Alien Trilogy files to use it in Unity
 */
-    public class AlienTrilogyMapLoader : MonoBehaviour
+public class AlienTrilogyMapLoader : MonoBehaviour
 {
     //[Header("PATHS")]
     private string levelPath = ""; // path to the .MAP file
-    private string texturePath = "C:\\Program Files (x86)\\Collection Chamber\\Alien Trilogy\\HDD\\TRILOGY\\CD\\L111LEV.B16"; // path to the .B16 file
+    private string texturePath = ""; // path to the .B16 file
 
-    [Header("SETTINGS")]
-	// TODO : Adjust this dynamically
+    [Header("Object Lists")]
+    public List<PathNode> pathNodes = new();
+    [HideInInspector]
+    public List<CollisionNode> collisions = new();
+    public List<Monster> monsters = new();
+    public List<Crate> boxes = new();
+    public List<Pickup> pickups = new();
+    public List<Door> doors = new();
+    public List<Lifts> lifts = new();
+
+    [Header("Map Values")]
+    //Map values
+    public byte pathCount;
+    public UInt16 vertCount, quadCount, mapLength, mapWidth, playerStartX, playerStartY, monsterCount, pickupCount, boxCount, doorCount, liftCount, playerStart, unknownByte1, unknownByte2, unknownByte3;
+
+
+    public Byte[] remainderBytes;
+
+    [Header("Settings")]
+    // TODO : Adjust this dynamically
     public int textureSize = 256; // pixel dimensions
-    private float scalingFactor = 1/512f; // scaling corrections
-    private Material baseMaterial;
+    public bool generateCSV;
+    private float scalingFactor = 1 / 512f; // scaling corrections
+    public Material baseMaterial;
 
     // These store the mesh data for Unity
     private List<Vector3> meshVertices = new();
@@ -36,6 +235,9 @@ using System.Diagnostics.Contracts;
 
     // Texture image data list
     private List<Texture2D> imgData = new();
+
+    //Final Map Output
+    public GameObject child;
 
     public static AlienTrilogyMapLoader loader;
 
@@ -53,138 +255,54 @@ using System.Diagnostics.Contracts;
             Destroy(gameObject);
         }
     }
-
     /*
 		Load the file from a given path and build the map in Unity
 	*/
     public void Initiate(string levelToLoad, string texturesToLoad)
     {
-		baseMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-		
+        //baseMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
         levelPath = levelToLoad;
         texturePath = texturesToLoad;
-        // Build map textures
-        BuildMapTextures();
-
-        // Build map geometry
-        BuildMapGeometry();
-
-        // Build map mesh
-        BuildMapMesh();
+        BuildMapTextures(); // Build map textures
+        BuildMapGeometry(); // Build map geometry
+        BuildMapMesh();     // Build map mesh
     }
-
-    /*
-		Load a specific byte-section from map data
-	*/
-    private List<BinaryReader> LoadSection(byte[] data, string sectionName)
-    {
-        MemoryStream ms = new MemoryStream(data);
-        BinaryReader br = new BinaryReader(ms);
-        List<BinaryReader> brList = new();
-
-        string formTag = Encoding.ASCII.GetString(br.ReadBytes(4));
-        int formSize = BitConverter.ToInt32(br.ReadBytes(4).Reverse().ToArray(), 0);
-        string platform = Encoding.ASCII.GetString(br.ReadBytes(4));
-        while (br.BaseStream.Position + 8 <= br.BaseStream.Length) // Parse chunks
-        {
-            string chunkName = Encoding.ASCII.GetString(br.ReadBytes(4));
-            int chunkSize = BitConverter.ToInt32(br.ReadBytes(4).Reverse().ToArray(), 0);
-            if (br.BaseStream.Position + chunkSize > br.BaseStream.Length) { break; }
-            byte[] chunkData = br.ReadBytes(chunkSize);
-            if ((chunkSize % 2) != 0) { br.BaseStream.Seek(1, SeekOrigin.Current); } // IFF padding to 2-byte alignment
-            if (chunkName.StartsWith(sectionName))
-            {
-                Debug.Log(sectionName + " > " + chunkName + " > bytes: " + chunkData.Length);
-                MemoryStream msChunkData = new MemoryStream(chunkData);
-                BinaryReader brChunkData = new BinaryReader(msChunkData);
-                brList.Add(brChunkData);
-            }
-        }
-
-        return brList;
-    }
-
     /*
 		Build the map textures
 	*/
     private void BuildMapTextures()
     {
-        byte[] textureData = File.ReadAllBytes(texturePath);
-        Debug.Log("Map texture bytes: " + textureData.Length);
-
-        int imageId = ExtractIdFromGfxFilename(texturePath);
-
-        // Read BX sections
-        List<BinaryReader> brList = LoadSection(textureData, "BX");
-        uvRects.Clear();
-
-        // Read UV from texture groups BX00-BX04
-        foreach (BinaryReader bxbr in brList)
+        Texture2D texture = null!;
+        int levelID = int.Parse(levelPath.Substring(levelPath.Length - 10, 3)); //Get Level ID from levelPath String
+        List<(int X, int Y, int Width, int Height)> rectangles = new();
+        using var br = new BinaryReader(File.OpenRead(texturePath));
+        br.BaseStream.Seek(36, SeekOrigin.Current);         // skip base header (36)
+        for (int i = 0; i < 5; i++)                         // perfect read order TP/CL/BX*5
         {
-            List<(int X, int Y, int Width, int Height)> rects = new();
-            int rectCount = bxbr.ReadInt16();
+            br.BaseStream.Seek(8, SeekOrigin.Current);      // TP header
+            byte[] TP = br.ReadBytes(65536);                // texture
+            br.BaseStream.Seek(12, SeekOrigin.Current);     // CL header
+            byte[] CL = br.ReadBytes(512);                  // palette
+            br.BaseStream.Seek(8, SeekOrigin.Current);      // BX header
+            rectangles = new();                             // renew rectangles list
+            int rectCount = br.ReadInt16();                 // UV rectangle count
             for (int j = 0; j < rectCount; j++)
             {
-                byte x = bxbr.ReadByte();
-                byte y = bxbr.ReadByte();
-                byte width = bxbr.ReadByte();
-                byte height = bxbr.ReadByte();
-                bxbr.ReadBytes(2); // unknown bytes
-                rects.Add((x, y, width + 1, height + 1));
+                byte x = br.ReadByte();
+                byte y = br.ReadByte();
+                byte width = br.ReadByte();
+                byte height = br.ReadByte();
+                br.BaseStream.Seek(2, SeekOrigin.Current);  // unknown bytes
+                rectangles.Add((x, y, width + 1, height + 1));
             }
-            uvRects.Add(rects);
-        }
-
-        // Read TP sections
-        List<BinaryReader> brImgList = LoadSection(textureData, "TP");
-        List<BinaryReader> brPalList = LoadSection(textureData, "CL");
-        Debug.Log("brPalList.Count = " + brPalList.Count);
-
-        int imageIndex = 0;
-        imgData.Clear();
-
-        // Read texture image data from TP00-TP04
-        foreach (BinaryReader tpbr in brImgList)
-        {
-            byte[] imageBytes = tpbr.ReadBytes((int)tpbr.BaseStream.Length);
-            byte[] paletteData = brPalList[imageIndex].ReadBytes((int)brPalList[imageIndex].BaseStream.Length); // Embedded palette
-
-            List<byte> palD = new();
-            for (int p = 0; p < paletteData.Length; p++)
-            {
-                if (p >= 4)
-                {
-                    palD.Add(paletteData[p]);
-                }
-            }
-            paletteData = Convert16BitPaletteToRGB(palD.ToArray());
-
-            Texture2D texture = RenderRaw8bppImageUnity(imageBytes, paletteData, textureSize, textureSize, imageId, imageIndex);
-            texture.name = "Tex_" + imageIndex.ToString("D2");
+            if (rectCount % 2 == 0) { br.BaseStream.Seek(2, SeekOrigin.Current); }    // if number of UVs is even, read forward two extra bytes
+            uvRects.Add(rectangles);
+            texture = RenderRaw8bppImageUnity(TP, Convert16BitPaletteToRGB(CL), textureSize, levelID, i);
+            texture.filterMode = FilterMode.Bilinear;
+            texture.name = $"Tex_{i:D2}";
             imgData.Add(texture);
-            Debug.Log($"Loaded texture: {texture.width}x{texture.height}");
-            imageIndex++;
         }
     }
-
-    /*
-		Extract map id
-	*/
-    public int ExtractIdFromGfxFilename(string fullPath)
-    {
-        string fileName = Path.GetFileName(fullPath); // e.g. "111GFX.B16"
-
-        // Match exactly 3 digits at the start of the filename
-        var match = Regex.Match(fileName, @"^\d{3}");
-
-        if (match.Success && int.TryParse(match.Value, out int id))
-        {
-            return id;
-        }
-
-        return 0; // Fallback if no match or parse fails
-    }
-
     /*
 		Create 16-bit RGB palette
 	*/
@@ -214,10 +332,8 @@ using System.Diagnostics.Contracts;
             rgbPalette[i * 3 + 1] = g8;
             rgbPalette[i * 3 + 2] = b8;
         }
-
         return rgbPalette;
     }
-
     /*
 		Returns transparent palette indices based on map id and image index
 	*/
@@ -406,15 +522,13 @@ using System.Diagnostics.Contracts;
 
         return values;
     }
-
     /*
 		Create 8-bit texture from 16-bit palette, with transparency based on palette indices for given map id and image index
 	*/
     private Texture2D RenderRaw8bppImageUnity(
         byte[] pixelData,
         byte[] rgbPalette,
-        int width,
-        int height,
+        int dimension,
         int mapId,
         int imageIndex)
     {
@@ -425,17 +539,17 @@ using System.Diagnostics.Contracts;
         int numColors = rgbPalette.Length / 3;
 
         // Create color array
-        Color32[] pixels = new Color32[width * height];
+        Color32[] pixels = new Color32[dimension * dimension];
 
         // Create texture object
-        Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+        Texture2D texture = new Texture2D(dimension, dimension, TextureFormat.RGBA32, false);
 
         // Write pixels to texture
-        for (int y = 0; y < height; y++)
+        for (int y = 0; y < dimension; y++)
         {
-            for (int x = 0; x < width; x++)
+            for (int x = 0; x < dimension; x++)
             {
-                int srcIndex = y * width + x;
+                int srcIndex = y * dimension + x;
                 if (srcIndex >= pixelData.Length)
                     continue;
 
@@ -462,200 +576,497 @@ using System.Diagnostics.Contracts;
                 }
 
                 // Vertical flip: write pixels from bottom to top
-                int flippedY = height - 1 - y;
-                int dstIndex = flippedY * width + x;
+                int flippedY = dimension - 1 - y;
+                int dstIndex = flippedY * dimension + x;
                 pixels[dstIndex] = color;
             }
         }
-
         texture.SetPixels32(pixels);
         texture.Apply();
-
         return texture;
     }
-
     /*
 		Build the map geometry and prepare mesh data (vertices, uvs, triangles)
 	*/
     private void BuildMapGeometry()
     {
-        byte[] mapData = File.ReadAllBytes(levelPath);
-        Debug.Log("Map geometry bytes: " + mapData.Length);
-
-        // Read MAP0 section
-        List<BinaryReader> map0brList = LoadSection(mapData, "MAP0");
-
         // Clear all lists to avoid artefacts
         meshVertices.Clear();
         meshUVs.Clear();
         meshTriangles.Clear();
         originalVertices.Clear();
-
-        // Build mesh data
-        foreach (BinaryReader map0br in map0brList)
+        // load MAP0 chunk
+        using var br = new BinaryReader(File.OpenRead(levelPath));
+        br.BaseStream.Seek(20, SeekOrigin.Current);     // Skip header bytes
+        vertCount = br.ReadUInt16();             // Read number of vertices
+        quadCount = br.ReadUInt16();             // Read number of quads
+        mapLength = br.ReadUInt16();             // map length & display in inspector
+        mapWidth = br.ReadUInt16();              // map width & display in inspector
+        playerStartX = br.ReadUInt16();          // player start X coordinate
+        //playerStartXString = playerStartX.ToString();   // display player start X coordinate
+        playerStartY = br.ReadUInt16();          // player start Y coordinate
+        //playerStartYString = playerStartY.ToString();   // display player start Y coordinate
+        pathCount = br.ReadByte();                 // path count
+        br.ReadByte();                                  // UNKNOWN 0 ( unused? 128 on all levels ) - possibly lighting related             
+        monsterCount = br.ReadUInt16();          // monster count
+        pickupCount = br.ReadUInt16();           // pickup count
+        boxCount = br.ReadUInt16();              // object count
+        doorCount = br.ReadUInt16();             // door count
+        liftCount = br.ReadUInt16();             // lift count
+        playerStart = br.ReadUInt16();           // player start angle
+        // unknown bytes
+        unknownByte1 = br.ReadUInt16();              // unknown 1
+        br.ReadBytes(2);                                // always 0x4040    ( unknown )
+        unknownByte2 = br.ReadUInt16();              // unknown2
+        ushort enemyTypes = br.ReadUInt16();            // Available Enemy Types
+        // Chapter 1 ( enemyTypes )
+        // L111LEV - 22 00 // 2 / 6
+        // L112LEV - 22 00 // 2 / 6 / 16
+        // L113LEV - 00 00 // null
+        // L122LEV - 22 04 // 2 / 6 / 11 / 16
+        // L131LEV - 26 04 // 2 / 6 / 11 / 3
+        // L114LEV - 00 00 // null
+        // L141LEV - 23 00 // 6 / 1 / 2
+        // L115LEV - 00 00 // null
+        // L154LEV - 23 10 // 6 / 1 / 2 / 13 / 16 / 17 / 19
+        // L155LEV - 0C 00 // 18 / 16 / 19
+        // L161LEV - A7 02 // 6 / 1 / 2 / 8 / 10 / 3
+        // L162LEV - 43 00 // 7 / 1 / 2
+        // Chapter 2 ( enemyTypes )
+        // L211LEV - 0E 08 // 4 / 12 / 2 / 3
+        // L212LEV - 0A 08 // 4 / 2 / 12
+        // L213LEV - 02 08 // 2 / 12
+        // L222LEV - 0B 08 // 1 / 2 / 12 / 4 / 17 / 19
+        // L242LEV - 00 00 // null
+        // L231LEV - 14 21 // 14 / 5 / 3 / 9
+        // L232LEV - 13 10 // 1 / 2 / 5 / 13 / 16 / 17
+        // L243LEV - 00 00 // null
+        // L262LEV - 17 02 // 5 / 1 / 2 / 10 / 3
+        // L263LEV - 43 00 // 7 / 1 / 2
+        // Chapter 3 ( enemyTypes )
+        // L311LEV - 10 20 // 5 / 14
+        // L321LEV - 02 00 // 2
+        // L331LEV - 12 21 // 5 / 14 / 2 / 9
+        // L322LEV - 08 00 // 4
+        // L351LEV - 24 12 // 6 / 13 / 10 / 3
+        // L352LEV - 00 00 // null
+        // L323LEV - 10 00 // 5
+        // L371LEV - 20 10 // 6 / 13
+        // L353LEV - 00 00 // null
+        // L324LEV - 22 00 // 2 / 6
+        // L381LEV - 23 00 // 6 / 1 / 2
+        // L325LEV - 36 00 // 3 / 5 / 2 / 6
+        // L391LEV - 43 00 // 7 / 1 / 2
+        // Multiplayer Levels ( enemyTypes )
+        // All = 00 10
+        unknownByte3 = br.ReadUInt16();              // unknown3
+        for (int i = 0; i < vertCount; i++)
         {
-            // Read number of vertices
-            ushort vertCount = map0br.ReadUInt16();
-            Debug.Log("Number of vertices: " + vertCount);
-
-            // Read number of quads
-            ushort quadCount = map0br.ReadUInt16();
-            Debug.Log("Number of quads: " + quadCount);
-
-            // Skip unused bytes
-            map0br.BaseStream.Seek(32, SeekOrigin.Current);
-
-            // Read original vertices
-            originalVertices.Clear();
-            for (int i = 0; i < vertCount; i++)
+            try
             {
-                try
-                {
-                    short x = map0br.ReadInt16();
-                    short y = map0br.ReadInt16();
-                    short z = map0br.ReadInt16();
-                    map0br.ReadBytes(2); // unknown bytes
-                    originalVertices.Add(new Vector3(x, y, z));
-                }
-                catch (Exception e)
-                {
-                    Debug.LogError($"Failed at vertex index {i}: {e}");
-                    break;
-                }
+                short x = br.ReadInt16();
+                short y = br.ReadInt16();
+                short z = br.ReadInt16();
+                br.ReadBytes(2); // unknown bytes
+                originalVertices.Add(new Vector3(x, y, z));
             }
-
-            Debug.Log("originalVertices.Count = " + originalVertices.Count);
-
-            // Read and process quads, duplicating vertices & uvs per quad
-            for (int i = 0; i < quadCount; i++)
+            catch (Exception e)
             {
-                int a = 0;
-                int b = 0;
-                int c = 0;
-                int d = 0;
-                try
+                UnityEngine.Debug.LogError($"Failed at vertex index {i}: {e}");
+                break;
+            }
+        }
+
+        //UnityEngine.Debug.Log("originalVertices.Count = " + originalVertices.Count);
+
+        // Read and process quads, duplicating vertices & uvs per quad
+        for (int i = 0; i < quadCount; i++)
+        {
+            int a = 0;
+            int b = 0;
+            int c = 0;
+            int d = 0;
+            try
+            {
+                a = br.ReadInt32();
+                b = br.ReadInt32();
+                c = br.ReadInt32();
+                d = br.ReadInt32();
+                ushort texIndex = br.ReadUInt16();
+                byte flags = br.ReadByte();
+                byte other = br.ReadByte();
+
+                // Determine texture group based on texIndex
+                int localIndex = texIndex;
+                int texGroup = 0;
+                for (int t = 0; t < uvRects.Count; t++)
                 {
-                    a = map0br.ReadInt32();
-                    b = map0br.ReadInt32();
-                    c = map0br.ReadInt32();
-                    d = map0br.ReadInt32();
-                    ushort texIndex = map0br.ReadUInt16();
-                    byte flags = map0br.ReadByte();
-                    byte other = map0br.ReadByte();
-
-                    // Determine texture group based on texIndex
-                    int localIndex = texIndex;
-                    int texGroup = 0;
-                    for (int t = 0; t < uvRects.Count; t++)
+                    int count = uvRects[t].Count;
+                    if (localIndex < count)
                     {
-                        int count = uvRects[t].Count;
-                        if (localIndex < count)
-                        {
-                            texGroup = t;
-                            break;
-                        }
-                        localIndex -= count;
+                        texGroup = t;
+                        break;
                     }
+                    localIndex -= count;
+                }
 
-                    Vector3 vA, vB, vC, vD;
-                    bool issueFound = false;
+                Vector3 vA, vB, vC, vD;
+                bool issueFound = false;
 
-                    // Validate vertex indices
-                    if (a < 0 || b < 0 || c < 0 || d < 0 ||
-                        a >= originalVertices.Count || b >= originalVertices.Count ||
-                        c >= originalVertices.Count || d >= originalVertices.Count)
-                    {
-                        Debug.LogWarning($"Invalid quad indices at quad {i}: {a}, {b}, {c}, {d}, {flags}");
-                        d = a; // Triangle instead of quad
-                        issueFound = true;
-                    }
+                // Validate vertex indices
+                if (a < 0 || b < 0 || c < 0 || d < 0 ||
+                    a >= originalVertices.Count || b >= originalVertices.Count ||
+                    c >= originalVertices.Count || d >= originalVertices.Count)
+                {
+                    //UnityEngine.Debug.LogWarning($"Invalid quad indices at quad {i}: {a}, {b}, {c}, {d}, {flags}");
+                    d = a; // Triangle instead of quad
+                    issueFound = true;
+                }
 
-                    // Get quad vertices positions
-                    vA = originalVertices[a];
-                    vB = originalVertices[b];
-                    vC = originalVertices[c];
-                    vD = originalVertices[d];
+                // Get quad vertices positions
+                vA = originalVertices[a];
+                vB = originalVertices[b];
+                vC = originalVertices[c];
+                vD = originalVertices[d];
 
-                    // Get UV rectangle for texture
-                    var rect = uvRects[texGroup][localIndex];
+                // Get UV rectangle for texture
+                var rect = uvRects[texGroup][localIndex];
 
-                    // Calculate UV coords (Unity uses bottom-left origin for UV)
-                    float texSize = (float)textureSize;
-                    float uMin = rect.X / texSize;
-                    float vMin = 1f - (rect.Y + rect.Height) / texSize;
-                    float uMax = (rect.X + rect.Width) / texSize;
-                    float vMax = 1f - rect.Y / texSize;
+                // Calculate UV coords (Unity uses bottom-left origin for UV)
+                float texSize = (float)textureSize;
+                float uMin = rect.X / texSize;
+                float vMin = 1f - (rect.Y + rect.Height) / texSize;
+                float uMax = (rect.X + rect.Width) / texSize;
+                float vMax = 1f - rect.Y / texSize;
 
-                    Vector2[] baseUvs = new Vector2[]
-                    {
+                Vector2[] baseUvs = new Vector2[]
+                {
                         new Vector2(uMin, vMin), // A
 						new Vector2(uMax, vMin), // B
 						new Vector2(uMax, vMax), // C
 						new Vector2(uMin, vMax)  // D
-					};
+                };
 
-                    Vector2[] quadUvs;
+                Vector2[] quadUvs;
 
-                    // Adjust UVs based on quad flags
-                    switch (flags)
-                    {
-                        case 2:
-                            // Flip texture 180 degrees
-                            quadUvs = new Vector2[] { baseUvs[1], baseUvs[0], baseUvs[3], baseUvs[2] };
-                            break;
-
-                        case 11:
-                            // Special triangle case: repeat D's UV for the 4th vertex
-                            quadUvs = new Vector2[] { baseUvs[0], baseUvs[2], baseUvs[3], baseUvs[3] };
-                            break;
-
-                        default:
-                            // Default UV mapping
-                            quadUvs = baseUvs;
-                            break;
-                    }
-
-                    // Adjust UVs based on triangles
-                    if (issueFound)
-                    {
-                        quadUvs = new Vector2[] { baseUvs[0], baseUvs[2], baseUvs[3], baseUvs[3] };
-                    }
-
-                    // Add duplicated vertices for this quad
-                    int baseIndex = meshVertices.Count;
-
-                    meshVertices.Add(vA);
-                    meshVertices.Add(vB);
-                    meshVertices.Add(vC);
-                    meshVertices.Add(vD);
-
-                    // Add UVs for each vertex
-                    meshUVs.AddRange(quadUvs);
-
-                    // Add triangles for this quad (two triangles)
-                    if (!meshTriangles.TryGetValue(texGroup, out List<int> tris))
-                    {
-                        tris = new List<int>();
-                        meshTriangles[texGroup] = tris;
-                    }
-
-                    tris.Add(baseIndex + 0);
-                    tris.Add(baseIndex + 1);
-                    tris.Add(baseIndex + 2);
-
-                    tris.Add(baseIndex + 2);
-                    tris.Add(baseIndex + 3);
-                    tris.Add(baseIndex + 0);
-                }
-                catch (Exception e)
+                // Adjust UVs based on quad flags
+                switch (flags)
                 {
-                    Debug.LogWarning($"Failed at quad index {i}:  {a}, {b}, {c}, {d} - {e}");
-                    break;
+                    case 2:
+                        // Flip texture 180 degrees
+                        quadUvs = new Vector2[] { baseUvs[1], baseUvs[0], baseUvs[3], baseUvs[2] };
+                        break;
+                    case 11:
+                        // Special triangle case: repeat D's UV for the 4th vertex
+                        quadUvs = new Vector2[] { baseUvs[0], baseUvs[2], baseUvs[3], baseUvs[3] };
+                        break;
+                    default:
+                        // Default UV mapping
+                        quadUvs = baseUvs;
+                        break;
                 }
+
+                // Adjust UVs based on triangles
+                if (issueFound)
+                {
+                    quadUvs = new Vector2[] { baseUvs[0], baseUvs[2], baseUvs[3], baseUvs[3] };
+                }
+
+                // Add duplicated vertices for this quad
+                int baseIndex = meshVertices.Count;
+
+                meshVertices.Add(vA);
+                meshVertices.Add(vB);
+                meshVertices.Add(vC);
+                meshVertices.Add(vD);
+
+                // Add UVs for each vertex
+                meshUVs.AddRange(quadUvs);
+
+                // Add triangles for this quad (two triangles)
+                if (!meshTriangles.TryGetValue(texGroup, out List<int> tris))
+                {
+                    tris = new List<int>();
+                    meshTriangles[texGroup] = tris;
+                }
+
+                tris.Add(baseIndex + 0);
+                tris.Add(baseIndex + 1);
+                tris.Add(baseIndex + 2);
+
+                tris.Add(baseIndex + 2);
+                tris.Add(baseIndex + 3);
+                tris.Add(baseIndex + 0);
+            }
+            catch (Exception e)
+            {
+                UnityEngine.Debug.LogWarning($"Failed at quad index {i}:  {a}, {b}, {c}, {d} - {e}");
+                break;
             }
         }
+        int collisionBlockCount = mapLength * mapWidth;
+        // collision block formula = multiply length by width - (16 bytes per collision node.)
+        for (int i = 0; i < collisionBlockCount; i++)
+        {
+            CollisionNode node = new()
+            {
+                unknown1 = br.ReadByte(),       // all values exist from 0-255                      ( 256 possible values )
+                unknown2 = br.ReadByte(),       // all values exist from 0-55 and 255               ( 57 possible values )
+                unknown3 = br.ReadByte(),       // only ever 255 or 0 across all levels in the game ( 255 = wall / 0 == traversable )
+                unknown4 = br.ReadByte(),       // only ever 255 or 0 across all levels in the game ( 255 = wall / 0 == traversable )
+                unknown5 = br.ReadByte(),       // only ever 0 across every level in the game       ( 1 possible value )
+                unknown6 = br.ReadByte(),       // only ever 0-21 across every level in the game    ( 22 possible values )
+                unknown7 = br.ReadByte(),       // only ever 0-95 across every level in the game    ( 96 possible values )
+                unknown8 = br.ReadByte(),       // only ever 0 across every level in the game       ( 1 possible value )
+                ceilingFog = br.ReadByte(),     // a range of different values                      ( 43 possible values )
+                floorFog = br.ReadByte(),       // a range of different values                      ( 40 possible values )
+                ceilingHeight = br.ReadByte(),  // a range of different values                      ( 30 possible values )
+                floorHeight = br.ReadByte(),    // a range of different values                      ( 206 possible values )
+                unknown13 = br.ReadByte(),      // a range of different values                      ( 26 possible values )
+                unknown14 = br.ReadByte(),      // a range of different values                      ( 167 possible values )
+                Lighting = br.ReadByte(),       // a range of different values                      ( 120 possible values )
+                Action = br.ReadByte(),         // only ever 0-41 across every level in the game    ( 42 possible values )
+                // action
+                // 0 - nothing space
+                // 1 - starting door open space
+                // 2 - door open space 0
+                // 3 - switch open space 1
+                // 4 - door open space 1
+                // 5 - switch open space 0
+                // 6 - unknown square space
+                // 7 - door open space 3
+                // 8 - battery switch 1
+                // 9 - end level space
+                // 10 - possibly stairs?
+                // 11 - unknown lines
+                // 12 - barricade line
+                // 13 - door or door open space?
+                // 14-41 - not used in level 1
+                Name = "Collision Node " + i
+            };
+            collisions.Add(node);
+            if (generateCSV)
+            {
+                string filePath = Application.dataPath + "/" + MapPuller.finder.levelNumber + "ExportedData.csv";
+                ExportToCSV(collisions, filePath);
+                UnityEngine.Debug.Log("CSV file exported to: " + filePath);
+            }
+        }
+        // path node formula = number of elements multiplied by 8 - (8 bytes per path node)
+        for (int i = 0; i < pathCount; i++)
+        {
+            PathNode obj = new PathNode
+            {
+                X = br.ReadByte(),              // x coordinate of the pathing object
+                Y = br.ReadByte(),              // y coordinate of the pathing object
+                unused = br.ReadByte(),         // only ever 0 across every level in the game
+                AlternateNode = br.ReadByte(),  // alternate node of the pathing object for special behaviours
+                NodeA = br.ReadByte(),          // node A of the pathing object
+                NodeB = br.ReadByte(),          // node B of the pathing object
+                NodeC = br.ReadByte(),          // node C of the pathing object
+                NodeD = br.ReadByte(),          // node D of the pathing object
+            };
+            pathNodes.Add(obj);
+        }
+        // monster formula = number of elements multiplied by 20 - (20 bytes per monster)
+        for (int i = 0; i < monsterCount; i++)
+        {
+            Monster monster = new Monster
+            {
+                Type = br.ReadByte(),           // type of the monster
+                // Monster Types (0x)
+                // 01 - Egg
+                // 02 - Face Hugger
+                // 03 - Chest Burster
+                // 04 - Bambi
+                // 05 - Dog Alien
+                // 06 - Warrior Drone
+                // 07 - Queen
+                // 08 - Ceiling Warrior Drone
+                // 09 - Ceiling Dog Alien
+                // 10 - Colonist
+                // 0B - Guard
+                // 0C - Soldier
+                // 0D - Synthetic
+                // 0E - Handler
+                // 0F - Value not used in any level ( possibly the player )
+                // 10 - Horizontal Steam Vent
+                // 11 - Horizontal Flame Vent
+                // 12 - Vertical Steam Vent
+                // 13 - Vertical Flame Vent
+                X = br.ReadByte(),              // x coordinate of the monster
+                Y = br.ReadByte(),              // y coordinate of the monster
+                Z = br.ReadByte(),              // z coordinate of the monster
+                Rotation = br.ReadByte(),       // Byte Direction  Facing
+                                                // 00 - North       // Y+
+                                                // 01 - North East  // X+ Y+
+                                                // 02 - East        // X+
+                                                // 03 - South East  // X+ Y-
+                                                // 04 - South       // Y-
+                                                // 05 - South West  // X- Y-
+                                                // 06 - West        // X-
+                                                // 07 - North West  // X- Y+
+                Health = br.ReadByte(),         // health of the monster
+                Drop = br.ReadByte(),           // index of object to be dropped
+                unknown2 = br.ReadByte(),       // UNKNOWN
+                Difficulty = br.ReadByte(),     // 0 - Easy, 1 - Medium, 2 - Hard
+                unknown4 = br.ReadByte(),       // UNKNOWN
+                unknown5 = br.ReadByte(),       // UNKNOWN
+                unknown6 = br.ReadByte(),       // UNKNOWN
+                unknown7 = br.ReadByte(),       // UNKNOWN
+                unknown8 = br.ReadByte(),       // UNKNOWN
+                Speed = br.ReadByte(),          // speed of the monster
+                unknown9 = br.ReadByte(),       // only ever 0 across every level in the game
+                unknown10 = br.ReadByte(),      // UNKNOWN
+                unknown11 = br.ReadByte(),      // UNKNOWN
+                unknown12 = br.ReadByte(),      // UNKNOWN
+                unknown13 = br.ReadByte(),      // UNKNOWN
+                Name = "Monster Spawn " + i,
+            };
+            monsters.Add(monster);
+        }
+        // pickup formula = number of elements multiplied by 8 - (8 bytes per pickup)
+        for (int i = 0; i < pickupCount; i++)
+        {
+            Pickup pickup = new Pickup
+            {
+                X = br.ReadByte(),              // x coordinate of the pickup
+                Y = br.ReadByte(),              // y coordinate of the pickup
+                Type = br.ReadByte(),           // pickup type
+                // Pickup Types (0x)
+                // 00 - Pistol
+                // 01 - Shotgun
+                // 02 - Pulse Rifle
+                // 03 - Flame Thrower
+                // 04 - Smartgun
+                // 05 - Nothing / Unused
+                // 06 - Seismic Charge
+                // 07 - Battery
+                // 08 - Night Vision Goggles
+                // 09 - Pistol Clip
+                // 0A - Shotgun Cartridge
+                // 0B - Pulse Rifle Clip
+                // 0C - Grenades
+                // 0D - Flamethrower Fuel
+                // 0E - Smartgun Ammunition
+                // 0F - Identity Tag
+                // 10 - Auto Mapper
+                // 11 - Hypo Pack
+                // 12 - Acid Vest
+                // 13 - Body Suit
+                // 14 - Medi Kit
+                // 15 - Derm Patch
+                // 16 - Protective Boots
+                // 17 - Adrenaline Burst
+                // 18 - Derm Patch
+                // 19 - Shoulder Lamp
+                // 1A - Shotgun Cartridge       ( Cannot be picked up )
+                // 1B - Grenades                ( Cannot be picked up )
+                Amount = br.ReadByte(),         // amount of the pickup
+                Multiplier = br.ReadByte(),     // multiplier for the pickup
+                unknown1 = br.ReadByte(),       // only ever 0 across every level in the game
+                Z = br.ReadByte(),              // only ever 0 or 1 across every level in the game
+                unknown2 = br.ReadByte(),       // UNKNOWN - unk2 is always the same as amount for ammunition
+                Name = "Pickup " + i,
+            };
+            pickups.Add(pickup);
+        }
+        // boxes formula = number of elements multiplied by 16 - (16 bytes per box)
+        for (int i = 0; i < boxCount; i++)
+        {
+            Crate box = new Crate
+            {
+                X = br.ReadByte(),
+                Y = br.ReadByte(),
+                Type = br.ReadByte(),
+                // My Object Types (int) - indented = unused across all levels                                          Object Status       Minimum Damage  Drop
+                // // // less than 20 - a box that cannot be blown up                                                   [INDESTRUCTIBLE]
+                // 20 - a regular box that can be blown up ( or an egg husk if in chapter 3 )                           [DESTRUCTIBLE]      PISTOL          YES
+                // 21 - destructible walls                                                                              [DESTRUCTIBLE]      GRENADE         YES
+                // 22 - another small switch, the difference is at the bottom of the model ( lightning is drawn )       [INDESTRUCTIBLE]
+                // 23 - barrel explodes.                                                                                [DESTRUCTIBLE]      SHOTGUN         NO
+                // 24 - switch with animation ( small switch )                                                          [INDESTRUCTIBLE]
+                // 25 - double stacked boxes ( two boxes on top of each other that can be blown up )                    [DESTRUCTIBLE]      PISTOL          YES
+                // 26 - wide switch with zipper                                                                         [INDESTRUCTIBLE]
+                // 27 - wide switch without zipper                                                                      [INDESTRUCTIBLE]
+                // 28 - an empty object that can be shot                                                                [DESTRUCTIBLE]      PISTOL          NO
+                // 29 - an empty object that can be shot through, something will spawn on death                         [DESTRUCTIBLE]      PISTOL          YES
+                // // // 30 - a regular box that can be blown up                                                        [DESTRUCTIBLE]      PISTOL          YES
+                // // // 31 - a regular box that can be blown up                                                        [DESTRUCTIBLE]      PISTOL          YES
+                // 32 - Strange Little Yellow Square                                                                    [INDESTRUCTIBLE]
+                // 33 - Steel Coil                                                                                      [INDESTRUCTIBLE]
+                // // // 34 - Strange Unused Shape                                                                      [INDESTRUCTIBLE]
+                // // // 35 - Light Pylon With No Texture, Completely Red...                                            [INDESTRUCTIBLE]
+                // // // 36 - Strange Tall Square ( improperly textured )                                               [INDESTRUCTIBLE]
+                // // // 37 - Egg Husk Shape ( untextured )                                                             [INDESTRUCTIBLE]
+                // // // greater than 37 - a regular box that can be blown up                                           [DESTRUCTIBLE]      PISTOL          YES
+                Drop = br.ReadByte(),           // 0 = Pickup 2 = Enemy
+                unknown1 = br.ReadByte(),       // UNKNOWN
+                unknown2 = br.ReadByte(),       // UNKNOWN - only ever 0 or 10 across every level in the game
+                Drop1 = br.ReadByte(),          // index of first pickup dropped
+                Drop2 = br.ReadByte(),          // index of second pickup dropped
+                unknown3 = br.ReadByte(),       // UNKNOWN
+                unknown4 = br.ReadByte(),       // UNKNOWN
+                unknown5 = br.ReadByte(),       // UNKNOWN
+                unknown6 = br.ReadByte(),       // only ever 0 across every level in the game
+                unknown7 = br.ReadByte(),       // UNKNOWN
+                unknown8 = br.ReadByte(),       // only ever 0 across every level in the game
+                Rotation = br.ReadByte(),       // Byte Direction  Facing
+                                                // 00 - North   // Y+
+                                                // 02 - East    // X+
+                                                // 04 - South   // Y-
+                                                // 06 - West    // X-
+                unknown10 = br.ReadByte()       // only ever 0 across every level in the game
+            };
+            boxes.Add(box);
+        }
+        // doors formula = value multiplied by 8 - (8 bytes one element)
+        for (int i = 0; i < doorCount; i++)
+        {
+            Door door = new Door
+            {
+                X = br.ReadByte(),              // x coordinate of the door
+                Y = br.ReadByte(),              // y coordinate of the door
+                unknown = br.ReadByte(),        // UNKNOWN - only ever 64 or 0 across every level in the game
+                Time = br.ReadByte(),           // door open time
+                Tag = br.ReadByte(),            // door tag
+                unknown2 = br.ReadByte(),       // only ever 0 across every level in the game
+                Rotation = br.ReadByte(),       // Byte Direction  Facing
+                                                // 00 - North   // Y+
+                                                // 02 - East    // X+
+                                                // 04 - South   // Y-
+                                                // 06 - West    // X-
+                Index = br.ReadByte()           // index of the door model in the BND file
+            };
+            doors.Add(door);
+        }
+        // lifts formula = value multiplied by 16 - (16 bytes one element)
+        for (int i = 0; i < liftCount; i++)
+        {
+            Lifts lift = new Lifts
+            {
+                X = br.ReadByte(),              // x coordinate of the lift
+                Y = br.ReadByte(),              // y coordinate of the lift
+                Z = br.ReadByte(),              // z coordinate of the lift
+                unknown1 = br.ReadByte(),       // this byte is always 0, 1, 2, 3, 4, 5 or 6 across every level in the game
+                unknown2 = br.ReadByte(),       // this byte is always 0 across every level in the game
+                unknown3 = br.ReadByte(),       // this byte is always 24, 27, 31, 32, 43, 44, 46, 47, 48, 50, 52, 56, 63, 64, 68, 79, 80, 84, 95 or 224 across every level in the game
+                unknown4 = br.ReadByte(),       // this byte is always 1 across every level in the game
+                unknown5 = br.ReadByte(),       // this byte is always 1, 4, 5 or 17 across every level in the game
+                unknown6 = br.ReadByte(),       // this byte is always 0, 1 or 60 across every level in the game
+                unknown7 = br.ReadByte(),       // this byte is always 0, 30, 50, 60, 90, 120, 150, 190, 210, 240 or 255 across every level in the game
+                unknown8 = br.ReadByte(),       // this byte is always 1, 2, 3, 4, 5, 6, 7, 10, 25 or 35  across every level in the game
+                unknown9 = br.ReadByte(),       // this byte is always 0 across every level in the game
+                unknown10 = br.ReadByte(),      // this byte is always 0, 1, 2, 3, 4, 5, 6, 7, 8 or 9 across every level in the game
+                unknown11 = br.ReadByte(),      // this byte is always 0, 1, 2, 3, 4, 5, 6, 7 or 8 across every level in the game ( these three bytes always match )
+                unknown12 = br.ReadByte(),      // this byte is always 0, 1, 2, 3, 4, 5, 6, 7 or 8 across every level in the game ( these three bytes always match )
+                unknown13 = br.ReadByte(),      // this byte is always 0, 1, 2, 3, 4, 5, 6, 7 or 8 across every level in the game ( these three bytes always match )
+            };
+            lifts.Add(lift);
+        }
+        long remainingBytes = br.BaseStream.Length - br.BaseStream.Position;
+        remainderBytes = br.ReadBytes((int)remainingBytes);
     }
-
     /*
 		Build the map mesh in Unity from duplicated vertices/uvs and triangles
 	*/
@@ -684,10 +1095,9 @@ using System.Diagnostics.Contracts;
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();
 
-        GameObject child = new GameObject("Map");
+        child = new GameObject("Map");
         child.transform.parent = this.transform;
-        child.transform.localPosition = Vector3.zero;
-        child.transform.localRotation = Quaternion.identity;
+        child.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
         child.transform.localScale = Vector3.one;
 
         var mf = child.AddComponent<MeshFilter>();
@@ -698,10 +1108,22 @@ using System.Diagnostics.Contracts;
 
         // Un-mirror
         child.transform.localScale = new Vector3(-1f, 1f, 1f) * scalingFactor;
-        child.transform.localPosition = new Vector3(-int.Parse(ObjDataPuller.objectPuller.mapLengthString) / 2, 2, int.Parse(ObjDataPuller.objectPuller.mapWidthString) / 2);
+        //position correctly for ALT co-ord system - To add, offset
+        child.transform.localPosition = new Vector3(-mapLength / 2, 2, mapWidth / 2);
         child.AddComponent<MeshCollider>();
 
-
-        Debug.Log("mesh.subMeshCount = " + mesh.subMeshCount);
+        UnityEngine.Debug.Log("mesh.subMeshCount = " + mesh.subMeshCount);
+    }
+    // Export to CSV
+    private void ExportToCSV(List<CollisionNode> data, string filePath)
+    {
+        using (StreamWriter writer = new StreamWriter(filePath))
+        {
+            foreach (var row in data)
+            {
+                string line = string.Join(",", row.Name, row.unknown1, row.unknown5, row.unknown6, row.unknown7, row.unknown8, row.ceilingFog, row.floorFog, row.ceilingHeight, row.floorHeight, row.unknown13, row.unknown14, row.Lighting, row.Action);
+                writer.WriteLine(line);
+            }
+        }
     }
 }

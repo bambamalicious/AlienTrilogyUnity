@@ -164,6 +164,23 @@ public class ObjectSpawner : MonoBehaviour
             newObj.transform.localPosition = pos;
             newObj.name = "PathNode " + index;
             col.obj = newObj;
+            CollisionObj script = newObj.GetComponent<CollisionObj>();
+            script.name = newObj.name;
+            script.unknown1 = col.unknown1;
+            script.unknown2 = col.unknown2;
+            script.unknown3 = col.unknown3;
+            script.unknown4 = col.unknown4;
+            script.unknown5 = col.unknown5;
+            script.unknown6 = col.unknown6;
+            script.unknown7 = col.unknown7;
+            script.unknown8 = col.unknown8;
+            script.ceilingFog = col.ceilingFog;
+            script.floorFog = col.floorFog;
+            script.ceilingHeight = col.ceilingHeight;
+            script.floorHeight = col.floorHeight;
+            script.unknown13 = col.unknown13;
+            script.Lighting = col.Lighting;
+            script.Action = col.Action;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up * 15, out RaycastHit hit))
             {
                 if (hit.collider != null)
@@ -172,7 +189,7 @@ public class ObjectSpawner : MonoBehaviour
                 }
             }
             xCount--;
-            if (xCount < -int.Parse(AlienTrilogyMapLoader.loader.mapLengthString) + 1)
+            if (xCount < -AlienTrilogyMapLoader.loader.mapLength + 1)
             {
                 yCount++;
                 xCount = 0;
