@@ -415,22 +415,26 @@ MonoBehaviour:
   pickups: []
   doors: []
   lifts: []
-  unknownMapBytes1: 
-  unknownMapBytes2: 
-  unknownMapBytes3: 
-  mapLengthString: 
-  mapWidthString: 
-  playerStartXString: 
-  playerStartYString: 
-  monsterCountString: 
-  pickupCountString: 
-  boxCountString: 
-  doorCountString: 
-  playerStartAngleString: 
-  liftCountString: 
+  pathCount: 0
+  vertCount: 0
+  quadCount: 0
+  mapLength: 0
+  mapWidth: 0
+  playerStartX: 0
+  playerStartY: 0
+  monsterCount: 0
+  pickupCount: 0
+  boxCount: 0
+  doorCount: 0
+  liftCount: 0
+  playerStart: 0
+  unknownByte1: 0
+  unknownByte2: 0
+  unknownByte3: 0
   remainderBytes: 
   textureSize: 256
   generateCSV: 0
+  baseMaterial: {fileID: 2100000, guid: 605a8aa2cb7612f4db162530b716d9e3, type: 2}
   child: {fileID: 0}
 --- !u!114 &457011030
 MonoBehaviour:
