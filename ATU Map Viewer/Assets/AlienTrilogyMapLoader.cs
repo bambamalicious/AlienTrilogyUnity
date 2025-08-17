@@ -1,3 +1,4 @@
+using Mono.Cecil;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Text.RegularExpressions;
 using Unity.Mathematics;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.UIElements;
 
 public class TimerExample : MonoBehaviour
@@ -187,6 +189,29 @@ public class Lifts
     public byte unknown13;
 }
 
+[System.Serializable] // Makes the class visible in the Inspector
+public class ActionGroup
+{
+    public string name;
+    public byte byte1;
+    public byte byte2; 
+    public byte byte3;
+    public byte byte4;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
+public class RemainderBytes
+{
+    public byte byte1;
+    public byte byte2;
+    public byte byte3;
+    public byte byte4;
+    public byte byte5;
+    public byte byte6;        
+    public byte byte7;
+    public byte byte8;
+}
+
 /*
 	Alien Trilogy Data Loader
 	Load data directly from original Alien Trilogy files to use it in Unity
@@ -211,9 +236,10 @@ public class AlienTrilogyMapLoader : MonoBehaviour
     //Map values
     public byte pathCount;
     public UInt16 vertCount, quadCount, mapLength, mapWidth, playerStartX, playerStartY, monsterCount, pickupCount, boxCount, doorCount, liftCount, playerStart, unknownByte1, unknownByte2, unknownByte3;
+    public int noOfInteractables = 0;
 
-
-    public Byte[] remainderBytes;
+    public List<ActionGroup> actions;
+    public List<RemainderBytes> remainderBytes;
 
     [Header("Settings")]
     // TODO : Adjust this dynamically
@@ -603,9 +629,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
         mapLength = br.ReadUInt16();             // map length & display in inspector
         mapWidth = br.ReadUInt16();              // map width & display in inspector
         playerStartX = br.ReadUInt16();          // player start X coordinate
-        //playerStartXString = playerStartX.ToString();   // display player start X coordinate
         playerStartY = br.ReadUInt16();          // player start Y coordinate
-        //playerStartYString = playerStartY.ToString();   // display player start Y coordinate
         pathCount = br.ReadByte();                 // path count
         br.ReadByte();                                  // UNKNOWN 0 ( unused? 128 on all levels ) - possibly lighting related             
         monsterCount = br.ReadUInt16();          // monster count
@@ -825,7 +849,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 unknown13 = br.ReadByte(),      // a range of different values                      ( 26 possible values )
                 unknown14 = br.ReadByte(),      // a range of different values                      ( 167 possible values )
                 Lighting = br.ReadByte(),       // a range of different values                      ( 120 possible values )
-                Action = br.ReadByte(),         // only ever 0-41 across every level in the game    ( 42 possible values )
+                Action = br.ReadByte(),         // only ever 0-41 across every level in the game    ( 42 possible values ) - Is the tag of the interactable
                 // action
                 // 0 - nothing space
                 // 1 - starting door open space
@@ -844,13 +868,17 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 // 14-41 - not used in level 1
                 Name = "Collision Node " + i
             };
+            if(node.Action > noOfInteractables)
+            {
+                noOfInteractables = node.Action;
+            }
             collisions.Add(node);
-            if (generateCSV)
+            /*if (generateCSV)
             {
                 string filePath = Application.dataPath + "/" + MapPuller.finder.levelNumber + "ExportedData.csv";
                 ExportToCSV(collisions, filePath);
                 UnityEngine.Debug.Log("CSV file exported to: " + filePath);
-            }
+            }*/
         }
         // path node formula = number of elements multiplied by 8 - (8 bytes per path node)
         for (int i = 0; i < pathCount; i++)
@@ -1064,8 +1092,38 @@ public class AlienTrilogyMapLoader : MonoBehaviour
             };
             lifts.Add(lift);
         }
+        //br.BaseStream.Seek(4, SeekOrigin.Current); // First 4 bytes here are always 0,255,255,0, which is action group zero
+        for (int i = 0; i < 64; i++) //Action Groups referred to by the "Action" byte of a collider. Max Action groups is 64.
+        {
+            ActionGroup rem = new()
+            {
+                name = "Action " + i,
+                byte1 = br.ReadByte(),  
+                byte2 = br.ReadByte(),  //actionable item to operate (i.e) door to unlock or power up.
+                byte3 = br.ReadByte(),
+                byte4 = br.ReadByte(),
+            };
+            actions.Add(rem);
+        }
         long remainingBytes = br.BaseStream.Length - br.BaseStream.Position;
-        remainderBytes = br.ReadBytes((int)remainingBytes);
+        for (int i = 0; i < remainingBytes/8; i++) //parse out remainder in 8 byte chunks for testing.
+        {
+            RemainderBytes rem = new()
+            {
+                byte1 = br.ReadByte(),
+                byte2 = br.ReadByte(),
+                byte3 = br.ReadByte(),
+                byte4 = br.ReadByte(),
+                byte5 = br.ReadByte(),
+                byte6 = br.ReadByte(),
+                byte7 = br.ReadByte(),
+                byte8 = br.ReadByte(),
+            };
+            remainderBytes.Add(rem);
+        }
+        string filePath = Application.dataPath + "/" + MapPuller.finder.levelNumber + "ExportedData.csv"; // [ush to CSV for data analysis.
+        ExportToCSV(remainderBytes, filePath);
+        UnityEngine.Debug.Log("CSV file exported to: " + filePath);
     }
     /*
 		Build the map mesh in Unity from duplicated vertices/uvs and triangles
@@ -1109,20 +1167,31 @@ public class AlienTrilogyMapLoader : MonoBehaviour
         // Un-mirror
         child.transform.localScale = new Vector3(-1f, 1f, 1f) * scalingFactor;
         //position correctly for ALT co-ord system - To add, offset
-        child.transform.localPosition = new Vector3(-mapLength / 2, 2, mapWidth / 2);
-        child.AddComponent<MeshCollider>();
+        Vector3 pos = new(-mapLength / 2, 2, mapWidth / 2);
+        if (mapLength % 2 == 0)
+        {
+            pos.x += .5f;
+        }
+        if (mapWidth % 2 == 0)
+        {
+            pos.z -= .5f;
+        }
+        child.transform.localPosition = pos;
+        child.AddComponent<MeshCollider>(); // ALT uses a spawning patten of Right to Left, Bottom to Top. This aspect corrects Unity spawning at (0,0,0) and allows byte values correct positioning.
 
         UnityEngine.Debug.Log("mesh.subMeshCount = " + mesh.subMeshCount);
     }
     // Export to CSV
-    private void ExportToCSV(List<CollisionNode> data, string filePath)
+    private void ExportToCSV(List<RemainderBytes> data, string filePath)
     {
         using (StreamWriter writer = new StreamWriter(filePath))
         {
+            int index = 0;
             foreach (var row in data)
             {
-                string line = string.Join(",", row.Name, row.unknown1, row.unknown5, row.unknown6, row.unknown7, row.unknown8, row.ceilingFog, row.floorFog, row.ceilingHeight, row.floorHeight, row.unknown13, row.unknown14, row.Lighting, row.Action);
+                string line = string.Join(",", row.byte1, row.byte2, row.byte3, row.byte4, row.byte5, row.byte6, row.byte7, row.byte8);
                 writer.WriteLine(line);
+                index++;
             }
         }
     }
