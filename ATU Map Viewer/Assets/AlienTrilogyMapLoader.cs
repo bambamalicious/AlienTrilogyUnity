@@ -1114,7 +1114,10 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 byte3 = br.ReadByte(),  // If 255, activate object, else run logic groups below
                 byte4 = br.ReadByte(),  // Seems to always be zero
             };
-            actions.Add(rem);
+            if (rem.byte1 != 0)
+            {
+                actions.Add(rem);
+            }
         }
         for (int i = 0; i < 64; i++) //Logic groups following action above.
         {
@@ -1126,7 +1129,10 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 byte3 = br.ReadByte(), // Byteflag to set
                 byte4 = br.ReadByte(), // Object flag to set on
             };
-            logics.Add(rem);
+            if (rem.byte1 != 255)
+            {
+                logics.Add(rem);
+            }
         }
         long remainingBytes = br.BaseStream.Length - br.BaseStream.Position;
         for (int i = 0; i < remainingBytes/8; i++) //parse out remainder in 8 byte chunks for testing.
