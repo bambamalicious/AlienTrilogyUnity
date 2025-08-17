@@ -200,6 +200,16 @@ public class ActionGroup
 }
 
 [System.Serializable] // Makes the class visible in the Inspector
+public class LogicGroup
+{
+    public string name;
+    public byte byte1;
+    public byte byte2;
+    public byte byte3;
+    public byte byte4;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
 public class RemainderBytes
 {
     public byte byte1;
@@ -239,6 +249,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
     public int noOfInteractables = 0;
 
     public List<ActionGroup> actions;
+    public List<LogicGroup> logics;
     public List<RemainderBytes> remainderBytes;
 
     [Header("Settings")]
@@ -1057,7 +1068,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 Y = br.ReadByte(),              // y coordinate of the door
                 unknown = br.ReadByte(),        // UNKNOWN - only ever 64 or 0 across every level in the game
                 Time = br.ReadByte(),           // door open time
-                Tag = br.ReadByte(),            // door tag
+                Tag = br.ReadByte(),            // door tag (Lock state, 1 unlocked, 2 locked)
                 unknown2 = br.ReadByte(),       // only ever 0 across every level in the game
                 Rotation = br.ReadByte(),       // Byte Direction  Facing
                                                 // 00 - North   // Y+
@@ -1098,12 +1109,24 @@ public class AlienTrilogyMapLoader : MonoBehaviour
             ActionGroup rem = new()
             {
                 name = "Action " + i,
-                byte1 = br.ReadByte(),  
-                byte2 = br.ReadByte(),  //actionable item to operate (i.e) door to unlock or power up.
-                byte3 = br.ReadByte(),
-                byte4 = br.ReadByte(),
+                byte1 = br.ReadByte(),  // Type of action? 0 = no action, 1 = door open, 2 = secret open, 3 = Mission?
+                byte2 = br.ReadByte(),  // Logic group to read / door to open. 
+                byte3 = br.ReadByte(),  // If 255, activate object, else run logic groups below
+                byte4 = br.ReadByte(),  // Seems to always be zero
             };
             actions.Add(rem);
+        }
+        for (int i = 0; i < 64; i++) //Logic groups following action above.
+        {
+            LogicGroup rem = new()
+            {
+                name = "Logic " + i,
+                byte1 = br.ReadByte(), // Action to be carried out? 1, logical step, 3 = ? 4 = Remove Item 9 = ?
+                byte2 = br.ReadByte(), // If 1 = Next step in sequence 255 stops the script 4 = Item to remove.
+                byte3 = br.ReadByte(), // Byteflag to set
+                byte4 = br.ReadByte(), // Object flag to set on
+            };
+            logics.Add(rem);
         }
         long remainingBytes = br.BaseStream.Length - br.BaseStream.Position;
         for (int i = 0; i < remainingBytes/8; i++) //parse out remainder in 8 byte chunks for testing.
