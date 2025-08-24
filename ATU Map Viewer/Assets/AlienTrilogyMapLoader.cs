@@ -49,6 +49,32 @@ public class BndSection
 }
 
 [System.Serializable] // Makes the class visible in the Inspector
+
+public class Header
+{
+    public byte unknown1;
+    public byte unknown2;
+    public byte unknown3;
+    public byte unknown4;
+    public byte unknown5;
+    public byte unknown6;
+    public byte unknown7;
+    public byte unknown8;
+    public byte unknown9;
+    public byte unknown10;
+    public byte unknown11;
+    public byte unknown12;
+    public byte unknown13;
+    public byte unknown14;
+    public byte unknown15;
+    public byte unknown16;
+    public byte unknown17;
+    public byte unknown18;
+    public byte unknown19;
+    public byte unknown20;
+}
+
+[System.Serializable] // Makes the class visible in the Inspector
 public class CollisionNode
 {
     public string Name;
@@ -68,7 +94,7 @@ public class CollisionNode
     public byte unknown13;
     public byte unknown14;
     public byte Lighting;
-    public byte Action;
+    public byte scriptAction;
 }
 
 [System.Serializable] // Makes the class visible in the Inspector
@@ -79,7 +105,7 @@ public class PathNode
     public byte X;
     public byte Y;
     public byte unused;
-    public byte AlternateNode;
+    public byte nodeState;
     public byte NodeA;
     public byte NodeB;
     public byte NodeC;
@@ -160,10 +186,10 @@ public class Door
     public byte Y;
     public byte unknown;
     public byte Time;
-    public byte Tag;
+    public byte LockState;
     public byte unknown2;
     public byte Rotation;
-    public byte Index;
+    public byte modelIndex;
 }
 
 [System.Serializable] // Makes the class visible in the Inspector
@@ -193,8 +219,8 @@ public class Lifts
 public class ActionGroup
 {
     public string name;
-    public byte byte1;
-    public byte byte2; 
+    public byte actionType;
+    public byte logicStep; 
     public byte byte3;
     public byte byte4;
 }
@@ -203,10 +229,10 @@ public class ActionGroup
 public class LogicGroup
 {
     public string name;
-    public byte byte1;
-    public byte byte2;
-    public byte byte3;
-    public byte byte4;
+    public byte action;
+    public byte nextStep;
+    public byte modifier;
+    public byte objectIndex;
 }
 
 [System.Serializable] // Makes the class visible in the Inspector
@@ -233,14 +259,21 @@ public class AlienTrilogyMapLoader : MonoBehaviour
     private string texturePath = ""; // path to the .B16 file
 
     [Header("Object Lists")]
-    public List<PathNode> pathNodes = new();
     [HideInInspector]
-    public List<CollisionNode> collisions = new();
-    public List<Monster> monsters = new();
-    public List<Crate> boxes = new();
-    public List<Pickup> pickups = new();
-    public List<Door> doors = new();
-    public List<Lifts> lifts = new();
+    public List<PathNode> pathNodes;
+    [HideInInspector]
+    public List<CollisionNode> collisions;
+    [HideInInspector]
+    public List<Monster> monsters;
+    [HideInInspector]
+    public List<Crate> boxes;
+    public List<Pickup> pickups;
+    [HideInInspector]
+    public List<Door> doors;
+    public List<Lifts> lifts;
+    public List<ActionGroup> actions;
+    public List<LogicGroup> logics;
+    public List<RemainderBytes> remainderBytes;
 
     [Header("Map Values")]
     //Map values
@@ -248,9 +281,6 @@ public class AlienTrilogyMapLoader : MonoBehaviour
     public UInt16 vertCount, quadCount, mapLength, mapWidth, playerStartX, playerStartY, monsterCount, pickupCount, boxCount, doorCount, liftCount, playerStart, unknownByte1, unknownByte2, unknownByte3;
     public int noOfInteractables = 0;
 
-    public List<ActionGroup> actions;
-    public List<LogicGroup> logics;
-    public List<RemainderBytes> remainderBytes;
 
     [Header("Settings")]
     // TODO : Adjust this dynamically
@@ -335,7 +365,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
             if (rectCount % 2 == 0) { br.BaseStream.Seek(2, SeekOrigin.Current); }    // if number of UVs is even, read forward two extra bytes
             uvRects.Add(rectangles);
             texture = RenderRaw8bppImageUnity(TP, Convert16BitPaletteToRGB(CL), textureSize, levelID, i);
-            texture.filterMode = FilterMode.Bilinear;
+            texture.filterMode = FilterMode.Point;
             texture.name = $"Tex_{i:D2}";
             imgData.Add(texture);
         }
@@ -641,8 +671,8 @@ public class AlienTrilogyMapLoader : MonoBehaviour
         mapWidth = br.ReadUInt16();              // map width & display in inspector
         playerStartX = br.ReadUInt16();          // player start X coordinate
         playerStartY = br.ReadUInt16();          // player start Y coordinate
-        pathCount = br.ReadByte();                 // path count
-        br.ReadByte();                                  // UNKNOWN 0 ( unused? 128 on all levels ) - possibly lighting related             
+        pathCount = br.ReadByte();               // path count
+        br.ReadByte();                           // UNKNOWN 0 ( unused? 128 on all levels ) - possibly lighting related             
         monsterCount = br.ReadUInt16();          // monster count
         pickupCount = br.ReadUInt16();           // pickup count
         boxCount = br.ReadUInt16();              // object count
@@ -650,10 +680,10 @@ public class AlienTrilogyMapLoader : MonoBehaviour
         liftCount = br.ReadUInt16();             // lift count
         playerStart = br.ReadUInt16();           // player start angle
         // unknown bytes
-        unknownByte1 = br.ReadUInt16();              // unknown 1
-        br.ReadBytes(2);                                // always 0x4040    ( unknown )
-        unknownByte2 = br.ReadUInt16();              // unknown2
-        ushort enemyTypes = br.ReadUInt16();            // Available Enemy Types
+        unknownByte1 = br.ReadUInt16();          // unknown 1
+        br.ReadBytes(2);                         // always 0x4040    Action block, 2 x 64 bytes.
+        unknownByte2 = br.ReadUInt16();          // unknown2
+        ushort enemyTypes = br.ReadUInt16();     // Available Enemy Types
         // Chapter 1 ( enemyTypes )
         // L111LEV - 22 00 // 2 / 6
         // L112LEV - 22 00 // 2 / 6 / 16
@@ -849,39 +879,23 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 unknown2 = br.ReadByte(),       // all values exist from 0-55 and 255               ( 57 possible values )
                 unknown3 = br.ReadByte(),       // only ever 255 or 0 across all levels in the game ( 255 = wall / 0 == traversable )
                 unknown4 = br.ReadByte(),       // only ever 255 or 0 across all levels in the game ( 255 = wall / 0 == traversable )
-                unknown5 = br.ReadByte(),       // only ever 0 across every level in the game       ( 1 possible value )
+                unknown5 = br.ReadByte(),       // only ever 0 across every level in the game       ( 1 possible value ) - blocked from CollisonObj script
                 unknown6 = br.ReadByte(),       // only ever 0-21 across every level in the game    ( 22 possible values )
                 unknown7 = br.ReadByte(),       // only ever 0-95 across every level in the game    ( 96 possible values )
-                unknown8 = br.ReadByte(),       // only ever 0 across every level in the game       ( 1 possible value )
-                ceilingFog = br.ReadByte(),     // a range of different values                      ( 43 possible values )
+                unknown8 = br.ReadByte(),       // only ever 0 across every level in the game       ( 1 possible value ) - Blocked from collision script for simplicity.
+                ceilingFog = br.ReadByte(),     // a range of different values                      ( 43 possible values ) - Useable height of collider
                 floorFog = br.ReadByte(),       // a range of different values                      ( 40 possible values )
-                ceilingHeight = br.ReadByte(),  // a range of different values                      ( 30 possible values )
+                ceilingHeight = br.ReadByte(),  // a range of different values                      ( 30 possible values ) 
                 floorHeight = br.ReadByte(),    // a range of different values                      ( 206 possible values )
                 unknown13 = br.ReadByte(),      // a range of different values                      ( 26 possible values )
                 unknown14 = br.ReadByte(),      // a range of different values                      ( 167 possible values )
                 Lighting = br.ReadByte(),       // a range of different values                      ( 120 possible values )
-                Action = br.ReadByte(),         // only ever 0-41 across every level in the game    ( 42 possible values ) - Is the tag of the interactable
-                // action
-                // 0 - nothing space
-                // 1 - starting door open space
-                // 2 - door open space 0
-                // 3 - switch open space 1
-                // 4 - door open space 1
-                // 5 - switch open space 0
-                // 6 - unknown square space
-                // 7 - door open space 3
-                // 8 - battery switch 1
-                // 9 - end level space
-                // 10 - possibly stairs?
-                // 11 - unknown lines
-                // 12 - barricade line
-                // 13 - door or door open space?
-                // 14-41 - not used in level 1
+                scriptAction = br.ReadByte(),         // only ever 0-41 across every level in the game    ( 42 possible values ) (See Actions)
                 Name = "Collision Node " + i
             };
-            if(node.Action > noOfInteractables)
+            if(node.scriptAction > noOfInteractables)
             {
-                noOfInteractables = node.Action;
+                noOfInteractables = node.scriptAction;
             }
             collisions.Add(node);
             /*if (generateCSV)
@@ -898,8 +912,8 @@ public class AlienTrilogyMapLoader : MonoBehaviour
             {
                 X = br.ReadByte(),              // x coordinate of the pathing object
                 Y = br.ReadByte(),              // y coordinate of the pathing object
-                unused = br.ReadByte(),         // only ever 0 across every level in the game
-                AlternateNode = br.ReadByte(),  // alternate node of the pathing object for special behaviours
+                unused = br.ReadByte(),         // only ever 0 across every level in the game - blocked from path script.
+                nodeState = br.ReadByte(),      // 0, active node. 2, inactive pending action, 3, one way only.
                 NodeA = br.ReadByte(),          // node A of the pathing object
                 NodeB = br.ReadByte(),          // node B of the pathing object
                 NodeC = br.ReadByte(),          // node C of the pathing object
@@ -935,7 +949,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 // 13 - Vertical Flame Vent
                 X = br.ReadByte(),              // x coordinate of the monster
                 Y = br.ReadByte(),              // y coordinate of the monster
-                Z = br.ReadByte(),              // z coordinate of the monster
+                Z = br.ReadByte(),              // Definitely not a Z value, only used on L222LEV for the monsters that spawn after first flame vent closed.
                 Rotation = br.ReadByte(),       // Byte Direction  Facing
                                                 // 00 - North       // Y+
                                                 // 01 - North East  // X+ Y+
@@ -955,7 +969,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 unknown7 = br.ReadByte(),       // UNKNOWN
                 unknown8 = br.ReadByte(),       // UNKNOWN
                 Speed = br.ReadByte(),          // speed of the monster
-                unknown9 = br.ReadByte(),       // only ever 0 across every level in the game
+                unknown9 = br.ReadByte(),       // only ever 0 across every level in the game. Commented as unused.
                 unknown10 = br.ReadByte(),      // UNKNOWN
                 unknown11 = br.ReadByte(),      // UNKNOWN
                 unknown12 = br.ReadByte(),      // UNKNOWN
@@ -1003,7 +1017,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 // 1B - Grenades                ( Cannot be picked up )
                 Amount = br.ReadByte(),         // amount of the pickup
                 Multiplier = br.ReadByte(),     // multiplier for the pickup
-                unknown1 = br.ReadByte(),       // only ever 0 across every level in the game
+                unknown1 = br.ReadByte(),       // only ever 0 across every level in the game - to be commented out.
                 Z = br.ReadByte(),              // only ever 0 or 1 across every level in the game
                 unknown2 = br.ReadByte(),       // UNKNOWN - unk2 is always the same as amount for ammunition
                 Name = "Pickup " + i,
@@ -1026,10 +1040,10 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 // 23 - barrel explodes.                                                                                [DESTRUCTIBLE]      SHOTGUN         NO
                 // 24 - switch with animation ( small switch )                                                          [INDESTRUCTIBLE]
                 // 25 - double stacked boxes ( two boxes on top of each other that can be blown up )                    [DESTRUCTIBLE]      PISTOL          YES
-                // 26 - wide switch with zipper                                                                         [INDESTRUCTIBLE]
-                // 27 - wide switch without zipper                                                                      [INDESTRUCTIBLE]
+                // 26 - wide switch with zipper                                                                         [INDESTRUCTIBLE]                            Battery required
+                // 27 - wide switch without zipper                                                                      [INDESTRUCTIBLE]                            Battery required
                 // 28 - an empty object that can be shot                                                                [DESTRUCTIBLE]      PISTOL          NO
-                // 29 - an empty object that can be shot through, something will spawn on death                         [DESTRUCTIBLE]      PISTOL          YES
+                // 29 - Medical locker, seen on L122LEV                                                                 [DESTRUCTIBLE]      PISTOL          YES
                 // // // 30 - a regular box that can be blown up                                                        [DESTRUCTIBLE]      PISTOL          YES
                 // // // 31 - a regular box that can be blown up                                                        [DESTRUCTIBLE]      PISTOL          YES
                 // 32 - Strange Little Yellow Square                                                                    [INDESTRUCTIBLE]
@@ -1047,15 +1061,15 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 unknown3 = br.ReadByte(),       // UNKNOWN
                 unknown4 = br.ReadByte(),       // UNKNOWN
                 unknown5 = br.ReadByte(),       // UNKNOWN
-                unknown6 = br.ReadByte(),       // only ever 0 across every level in the game
+                unknown6 = br.ReadByte(),       // only ever 0 across every level in the game - to be commented out
                 unknown7 = br.ReadByte(),       // UNKNOWN
-                unknown8 = br.ReadByte(),       // only ever 0 across every level in the game
+                unknown8 = br.ReadByte(),       // only ever 0 across every level in the game - to be commented out
                 Rotation = br.ReadByte(),       // Byte Direction  Facing
                                                 // 00 - North   // Y+
                                                 // 02 - East    // X+
                                                 // 04 - South   // Y-
                                                 // 06 - West    // X-
-                unknown10 = br.ReadByte()       // only ever 0 across every level in the game
+                unknown10 = br.ReadByte()       // only ever 0 across every level in the game - to be commented out
             };
             boxes.Add(box);
         }
@@ -1067,15 +1081,15 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 X = br.ReadByte(),              // x coordinate of the door
                 Y = br.ReadByte(),              // y coordinate of the door
                 unknown = br.ReadByte(),        // UNKNOWN - only ever 64 or 0 across every level in the game
-                Time = br.ReadByte(),           // door open time
-                Tag = br.ReadByte(),            // door tag (Lock state, 1 unlocked, 2 locked)
-                unknown2 = br.ReadByte(),       // only ever 0 across every level in the game
+                Time = br.ReadByte(),           // door open time - If zero, can be manually closed at the collider.
+                LockState = br.ReadByte(),            // door tag (Lock state, 1 unlocked, 2 locked, shootable = number of shots confirmed)
+                unknown2 = br.ReadByte(),       // only ever 0 across every level in the game - Probably remove from spawn script
                 Rotation = br.ReadByte(),       // Byte Direction  Facing
                                                 // 00 - North   // Y+
                                                 // 02 - East    // X+
                                                 // 04 - South   // Y-
                                                 // 06 - West    // X-
-                Index = br.ReadByte()           // index of the door model in the BND file
+                modelIndex = br.ReadByte()      // index of the door model in the BND file
             };
             doors.Add(door);
         }
@@ -1094,7 +1108,7 @@ public class AlienTrilogyMapLoader : MonoBehaviour
                 unknown5 = br.ReadByte(),       // this byte is always 1, 4, 5 or 17 across every level in the game
                 unknown6 = br.ReadByte(),       // this byte is always 0, 1 or 60 across every level in the game
                 unknown7 = br.ReadByte(),       // this byte is always 0, 30, 50, 60, 90, 120, 150, 190, 210, 240 or 255 across every level in the game
-                unknown8 = br.ReadByte(),       // this byte is always 1, 2, 3, 4, 5, 6, 7, 10, 25 or 35  across every level in the game
+                unknown8 = br.ReadByte(),       // this byte is always 1, 2, 3, 4, 5, 6, 7, 10, 25 or 35  across every level in the game - For shootables, number of shots. Must correspond with action byte 3.
                 unknown9 = br.ReadByte(),       // this byte is always 0 across every level in the game
                 unknown10 = br.ReadByte(),      // this byte is always 0, 1, 2, 3, 4, 5, 6, 7, 8 or 9 across every level in the game
                 unknown11 = br.ReadByte(),      // this byte is always 0, 1, 2, 3, 4, 5, 6, 7 or 8 across every level in the game ( these three bytes always match )
@@ -1109,12 +1123,12 @@ public class AlienTrilogyMapLoader : MonoBehaviour
             ActionGroup rem = new()
             {
                 name = "Action " + i,
-                byte1 = br.ReadByte(),  // Type of action? 0 = no action, 1 = door open, 2 = secret open, 3 = Mission?
-                byte2 = br.ReadByte(),  // Logic group to read / door to open. 
-                byte3 = br.ReadByte(),  // If 255, activate object, else run logic groups below
+                actionType = br.ReadByte(),  // Type of action? 0 = no action, 1 = Standard, 2 = Shootable (must be set with activations) 3 = Mission?
+                logicStep = br.ReadByte(),  // Logic Next logic in sequence.
+                byte3 = br.ReadByte(),  // Repeatable bool maybe?, possibly activations (matches number of shots for activiation of shootables)
                 byte4 = br.ReadByte(),  // Seems to always be zero
             };
-            if (rem.byte1 != 0)
+            if (rem.actionType != 0)
             {
                 actions.Add(rem);
             }
@@ -1124,15 +1138,22 @@ public class AlienTrilogyMapLoader : MonoBehaviour
             LogicGroup rem = new()
             {
                 name = "Logic " + i,
-                byte1 = br.ReadByte(), // Action to be carried out? 1, logical step, 3 = ? 4 = Remove Item 9 = ?
-                byte2 = br.ReadByte(), // If 1 = Next step in sequence 255 stops the script 4 = Item to remove.
-                byte3 = br.ReadByte(), // Byteflag to set
-                byte4 = br.ReadByte(), // Object flag to set on
+                action = br.ReadByte(), // Action to be carried out?
+                //0 = lighting change
+                //1 = Door Unlock
+                //2 = Pickup active/deactive
+                //3 = Monster active/deactive
+                //4 = Switch set inactive
+                //5 = "Locked" Lift Operate (Byte 8 =2) (Possible a "walkable" flag)
+                //6 = Door Open
+                //7 = Lift operate (If Byte 8 = 2, unlock lift)
+                //8 = End Level
+                //9 = Path node activate
+                nextStep = br.ReadByte(), // If 1 = Next step in sequence 255 stops the script
+                modifier = br.ReadByte(), // Modifier to action (i.e type 3, set 1 to spawn, 255 to despawn (i.e steam)
+                objectIndex = br.ReadByte(), // Object index
             };
-            if (rem.byte1 != 255)
-            {
-                logics.Add(rem);
-            }
+            logics.Add(rem);
         }
         long remainingBytes = br.BaseStream.Length - br.BaseStream.Position;
         for (int i = 0; i < remainingBytes/8; i++) //parse out remainder in 8 byte chunks for testing.
