@@ -29,9 +29,12 @@ Data manager to store all values and groundwork for SAving / Loading via PlayerP
 
 **To Do**
 Add .exe file to file viewer, and enable game to be "launched" from .exe in viewer,
-Implement options men,
+Implement options menu,
 Implement resolution options,
 Implement controls and re-mapping (M&K, Controller & Touch, single output to read i.e if(InputManager.forward... go forward)),
+Implement Language options as per original (Maybe look to on-the-fly translation as well?),
+Implement original credits sequence,
+Implement Classic / Modern switch,
 Implement ALT map viewer and store data on a per-level basis,
 Develop async loading screen to hide data load & map build,
 Saving and loading system. (Playerprefs?),
