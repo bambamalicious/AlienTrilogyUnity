@@ -152,17 +152,23 @@ public class ObjectSpawner : MonoBehaviour
     [ContextMenu("Spawn Collisions")]
     public void SpawnCollisions()
     {
-        colFrame = Instantiate(new GameObject(), new Vector3(0, 0, 0), transform.rotation);
+        colFrame = new GameObject();
+        colFrame.transform.position = new(0, 0, 0);
         colFrame.transform.name = "Collision Nodes";
         int index = 0;
-        int xCount = 1;
+        int xCount = 0;
         int yCount = 0;
         foreach (CollisionNode col in AlienTrilogyMapLoader.loader.collisions)
         {
+            if (/*col.unknown1 == 255 ||*/ col.scriptAction == 0)
+            {
+                count();
+                continue;
+            }
             Vector3 pos = new(xCount, -10, yCount);
             newObj = Instantiate(colObj, pos, transform.rotation, colFrame.transform);
             newObj.transform.localPosition = pos;
-            newObj.name = "PathNode " + index;
+            newObj.name = "Collision Node " + index;
             col.obj = newObj;
             CollisionObj script = newObj.GetComponent<CollisionObj>();
             script.name = newObj.name;
@@ -170,17 +176,17 @@ public class ObjectSpawner : MonoBehaviour
             script.unknown2 = col.unknown2;
             script.unknown3 = col.unknown3;
             script.unknown4 = col.unknown4;
-            script.unknown5 = col.unknown5;
+            //script.unknown5 = col.unknown5;
             script.unknown6 = col.unknown6;
             script.unknown7 = col.unknown7;
-            script.unknown8 = col.unknown8;
+            //script.unknown8 = col.unknown8;
             script.ceilingFog = col.ceilingFog;
             script.floorFog = col.floorFog;
             script.ceilingHeight = col.ceilingHeight;
             script.floorHeight = col.floorHeight;
             script.unknown13 = col.unknown13;
             script.Lighting = col.Lighting;
-            script.Action = col.Action;
+            script.Action = col.scriptAction;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up * 15, out RaycastHit hit))
             {
                 if (hit.collider != null)
@@ -188,8 +194,12 @@ public class ObjectSpawner : MonoBehaviour
                     newObj.transform.position = hit.point;
                 }
             }
+            count();
+        }
+        void count()
+        {
             xCount--;
-            if (xCount < -AlienTrilogyMapLoader.loader.mapLength + 1)
+            if (xCount <= -AlienTrilogyMapLoader.loader.mapLength)
             {
                 yCount++;
                 xCount = 0;
@@ -218,6 +228,15 @@ public class ObjectSpawner : MonoBehaviour
             newObj.GetComponent<MeshRenderer>().material = spawnMaterial;
             newObj.name = "PathNode " + index;
             obj.obj = newObj;
+            pathObj script = newObj.transform.AddComponent<pathObj>();
+            script.name = newObj.name;
+            script.X = obj.X;
+            script.Y = obj.Y;
+            script.nodeState = obj.nodeState;
+            script.NodeA = obj.NodeA;
+            script.NodeB = obj.NodeB;
+            script.NodeC = obj.NodeC;
+            script.NodeD = obj.NodeD;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out RaycastHit hit))
             {
                 if (hit.collider != null)
@@ -252,6 +271,7 @@ public class ObjectSpawner : MonoBehaviour
                 case 25: crate.Name = "Double Crates " + index; break;
                 case 26: crate.Name = "Wide Switch " + index; break;
                 case 27: crate.Name = "Wide Battery Switch " + index; break;
+                case 29: crate.Name = "Medical Locker" + index; break;
                 //
                 case 32: crate.Name = "Strange Little Yellow Square   " + index; break;
                 case 33: crate.Name = "Steel Coil       " + index; break;
@@ -263,7 +283,24 @@ public class ObjectSpawner : MonoBehaviour
             newObj.transform.localPosition = pos;
             newObj.name = crate.Name;            
             crate.spawnedObject = newObj;
-
+            boxObj script = newObj.transform.AddComponent<boxObj>();
+            script.name = crate.Name;
+            script.X = crate.X;
+            script.Y = crate.Y;
+            script.Type = crate.Type;
+            script.Drop = crate.Drop;
+            script.unknown1 = crate.unknown1;
+            script.unknown2 = crate.unknown2;
+            script.Drop1 = crate.Drop1;
+            script.Drop2 = crate.Drop2;
+            script.unknown3 = crate.unknown3;
+            script.unknown4 = crate.unknown4;
+            script.unknown5 = crate.unknown5;
+            script.unknown6 = crate.unknown6;
+            script.unknown7 = crate.unknown7;
+            script.unknown8 = crate.unknown8;
+            script.Rotation = crate.Rotation;
+            script.unknown10 = crate.unknown10;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out RaycastHit hit))
             {
                 if (hit.collider != null)
@@ -317,6 +354,29 @@ public class ObjectSpawner : MonoBehaviour
             newObj.transform.localPosition = pos;
             newObj.name = monster.Name;
             monster.spawnedObj = newObj;
+            monsterObj script = newObj.transform.AddComponent<monsterObj>();
+            script.name = monster.Name;
+            script.Type = monster.Type;
+            script.X = monster.X;
+            script.Y = monster.Y;
+            script.Z = monster.Z;
+            script.Rotation = monster.Rotation;
+            script.Health = monster.Health;
+            script.Drop = monster.Drop;
+            script.unknown2 = monster.unknown2;
+            script.Difficulty = monster.Difficulty;
+            script.unknown4 = monster.unknown4;
+            script.unknown5 = monster.unknown5;
+            script.unknown6 = monster.unknown6;
+            script.unknown7 = monster.unknown7;
+            script.unknown8 = monster.unknown8;
+            script.Speed = monster.Speed;
+            script.unknown8 = monster.unknown8;
+            //script.unknown9 = monster.unknown9;
+            script.unknown10 = monster.unknown10;
+            script.unknown11 = monster.unknown11;
+            script.unknown12 = monster.unknown12;
+            script.unknown13 = monster.unknown13;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out RaycastHit hit))
             {
                 if (hit.collider != null)
@@ -440,6 +500,16 @@ public class ObjectSpawner : MonoBehaviour
             newObj.transform.localPosition = pos;
             newObj.name = "Door " + index;
             obj.spawnedObject = newObj;
+            DoorObj script = newObj.AddComponent<DoorObj>();
+            script.name = obj.name;
+            script.X = obj.X;
+            script.Y = obj.Y;
+            script.unknown = obj.unknown;
+            script.Time = obj.Time;
+            script.lockState = obj.LockState;
+            //script.unknown2 = obj.unknown2; - commented as 0 on all doors so not required.
+            script.Rotation = obj.Rotation;
+            script.modelIndex = obj.modelIndex;
             if (Physics.Raycast(newObj.transform.position, newObj.transform.up, out RaycastHit hit))
             {
                 if (hit.collider != null)
