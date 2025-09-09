@@ -19,6 +19,7 @@ Right click ObjSpawner to spawn object classes, or all objects.
 
 Export to CSV will export all Collider data to CSV.
 
+
 **Unity Port Progress**
 
 File viewer implemented allowing loading of original game into port,
@@ -30,6 +31,8 @@ Sound effects decoded and loaded into asset library for immediate use,
 Music pulled straight from CD audio,
 
 Opening videos and transition to main menu complete.
+
+Options menu 50% complete. Selection of difficulty, sounds and video options prepared.
 
 <img width="687" height="387" alt="image" src="https://github.com/user-attachments/assets/0467e8a5-bab3-47f9-801d-85bee68fe6e1" />
 <img width="689" height="388" alt="image" src="https://github.com/user-attachments/assets/71f7a765-87f1-42ce-a8e7-c577cb28cc91" />
@@ -78,7 +81,7 @@ Lots of unknown byte actions remain in the original code. To be discovered by de
 
 Existence of decoded videos can cause exceptions and failure to load. Clear all decoded video from streaming assets and attempt boot again,
 
-3rd video only plays halfway then transitions. Fix inbound,
+3rd video only plays halfway then transitions. Fixed in bext build
 
 Moving out of the Unity window during video play can mess things up. Either skip or watch through. Catch to be implemented.
 
