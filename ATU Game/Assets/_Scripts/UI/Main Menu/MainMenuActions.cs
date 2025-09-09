@@ -16,7 +16,9 @@ public class MainMenuActions : MonoBehaviour
     public RawImage image2;
     public Texture background;
     public GameObject menu;
+    public GameObject optionsPanel;
     public List<Button> buttons = new();
+    public AudioSource sfxAudio;
     string gfxDirectory;
     string paletteDirectory;
     List<string> fileNames = new();
@@ -26,7 +28,7 @@ public class MainMenuActions : MonoBehaviour
     private byte[] currentFrame; // current frame data for compressed files
     List<BndSection> currentSections = new();
 
-    public AudioSource audio;
+    public AudioSource musicAudio;
 
     private static string[] removal = { "DEMO111", "DEMO211", "DEMO311", "PICKMOD", "OPTOBJ", "OBJ3D", "PANEL3GF", "PANELGFX" }; // unused demo files and models
     private static string[] duplicate = { "EXPLGFX", "FLAME", "MM9", "OPTGFX", "PULSE", "SHOTGUN", "SMART" }; // remove duplicate entries & check for weapons
@@ -47,7 +49,7 @@ public class MainMenuActions : MonoBehaviour
             menuBackground = this;
         }
         else { Destroy(gameObject); }
-        audio = GetComponent<AudioSource>();
+        musicAudio = GetComponent<AudioSource>();
     }
 
     //Startup Script and load Main Menu
@@ -61,14 +63,40 @@ public class MainMenuActions : MonoBehaviour
         ListFiles(gfxDirectory, ".BND", ".B16", true);
     }
 
-    public void QuitGame()
+    public void ButtonSound(int sound)
     {
-        Application.Quit();
+        sfxAudio.clip = DataManager.data.sfxList[sound];
+        sfxAudio.volume = DataManager.data.soundVolume;
+        sfxAudio.Stop();
+        sfxAudio.Play();
     }
 
-    public void OnHover(int sound)
+    public void OnClick(int item)
     {
-        audio.PlayOneShot(DataManager.data.sfxList[sound], DataManager.data.soundVolume/100);
+        ButtonSound(1);
+        switch (item)
+        {
+            case 0: break;
+                //Play game actions
+            case 1: break;
+                //Load Game Actions
+            case 2: break;
+                //Multiplayer Actions
+            case 3:
+                menu.SetActive(false);
+                SetImages(8,9,false);
+                optionsPanel.SetActive(true);
+                optionsPanel.GetComponent<OptionsManager>().StartUp();
+                break;
+            case 4:
+                Application.Quit();
+                break;
+            case 5:
+                menu.SetActive(true);
+                SetImages(6, 7, false);
+                optionsPanel.SetActive(false);
+                break;
+        }
     }
 
     public void EnableMenu()
@@ -242,9 +270,9 @@ public class MainMenuActions : MonoBehaviour
 
         var ac = w.GetAudioClip();
         //var tempClip = w.audioClip;
-        audio.clip = ac;
-        audio.volume = DataManager.data.musicVolume/100;
-        audio.Play();
+        GetComponent<AudioSource>().clip = ac;
+        GetComponent<AudioSource>().volume = DataManager.data.musicVolume/100;
+        GetComponent<AudioSource>().Play();
         StopAllCoroutines();
     }
 }

@@ -10,13 +10,18 @@ public class DataManager : MonoBehaviour
     public List<AudioClip> sfxList = new();
     public List<string> musicList = new();
     [Header("Options")]
-    [Range(0, 100)]
-    public int soundVolume;
-    [Range(0, 100)]
-    public int musicVolume;
+    [Header("Sound Options")]
+    [Range(0, 1)]
+    public float soundVolume;
+    [Range(0, 1)]
+    public float musicVolume;
+    public bool spatialAudio;
+    [Header("Video Options")]
+    public Resolution resolution;
+    public bool cameraSway;
+    [Header("Gameplay Options")]
     [Range(0, 2)]
     public int difficulty;
-    public Vector2 resolution;
     public bool enchancedMode;
 
 

@@ -17,8 +17,9 @@ public class CreateMovies : MonoBehaviour
     //Set from the Editor
     public List<string> videoClipList;
 
-    private List<VideoPlayer> videoPlayerList = new();
-    private int videoIndex = 0;
+    public List<VideoPlayer> videoPlayerList = new();
+    public int videoIndex = 0;
+    public bool videoPlaying;
 
     VideoPlayer videoPlayer;
 
@@ -45,6 +46,10 @@ public class CreateMovies : MonoBehaviour
         }
         //Skip videos, close down existing videoPlayers and clear list.
         else if(Input.GetKeyDown(KeyCode.Escape) && escapePressed == true && videoPlayerList[videoIndex].isPlaying)
+        {
+            EndOfMovies();
+        }
+        if (videoPlaying && !videoPlayerList[videoIndex].isPlaying && videoIndex == videoPlayerList.Count-1)
         {
             EndOfMovies();
         }
@@ -96,7 +101,7 @@ public class CreateMovies : MonoBehaviour
 
     void HandleLog(string logString, string stackTrace, LogType type)
     {
-        if (logString.Contains("On Success. Execution Id: 3014"))
+        if (logString.Contains("On Success. Execution Id: 3017"))
         {
             FlairText.flair.flairText.text = "";
             StartFilms();
@@ -196,7 +201,7 @@ public class CreateMovies : MonoBehaviour
                 if (nextIndex >= videoPlayerList.Count)
                 {
                     Debug.LogWarning("End of All Videos: " + videoIndex);
-                    EndOfMovies();
+                    videoPlaying = true;
                     yield break;
                 }
 
@@ -225,6 +230,7 @@ public class CreateMovies : MonoBehaviour
     void EndOfMovies()
     {
         StopAllCoroutines();
+        videoPlaying = false;
         FlairText.flair.flairText.text = "";
         image.enabled = false;
         videoPlayerList[videoIndex].Stop();
